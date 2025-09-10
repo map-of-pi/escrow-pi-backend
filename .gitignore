@@ -1,0 +1,16 @@
+# Compiled output
+/dist
+
+# dependencies
+/node_modules
+
+# testing
+/coverage
+
+# local env files
+.env
+.vercel
+
+# local misc
+uploads
+/scripts
