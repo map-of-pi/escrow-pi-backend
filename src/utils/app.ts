@@ -10,7 +10,7 @@ import docRouter from "../config/swagger";
 // import requestLogger from "../middlewares/logger";
 
 import userRoutes from "../routes/user.routes";
-// import paymentsRouter from "../routes/payment.routes";
+import paymentsRouter from "../routes/payment.routes";
 
 
 dotenv.config();
@@ -34,7 +34,7 @@ app.use('/api/docs', express.static(path.join(__dirname, '../config/docs')));
 app.use("/api/docs", docRouter);
 
 app.use("/api/v1/users", userRoutes);
-// app.use('/api/v1/payments', paymentsRouter);
+app.use('/api/v1/payments', paymentsRouter);
 
 app.use("/", homeRoutes);
 
