@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import { connectDB } from "./config/dbConnection";
 import logger from "./config/loggingConfig";
 import "./config/sentryConnection";
-// import { scheduleCronJobs } from "./cron";
 import app from "./utils/app";
 import { env } from "./utils/env";
 
@@ -16,7 +15,7 @@ const startServer = async () => {
     await connectDB();
 
     // In a non-serverless environment, start the server
-    if (env.NODE_ENV !== 'production') {
+    if (env.NODE_ENV === 'development') {
       await new Promise<void>((resolve) => {
         // Start listening on the specified port
         app.listen(env.PORT, () => {
