@@ -6,7 +6,7 @@ import { env } from "../utils/env";
 export const connectDB = async () => {
   try {
     // Only log the MongoDB URL in non-production environments
-    if (env.NODE_ENV !== 'production') {
+    if (env.NODE_ENV === 'development') {
       logger.info(`Connecting to MongoDB with URL: ${env.MONGODB_URL}`);
     }
     await mongoose.connect(env.MONGODB_URL, {
