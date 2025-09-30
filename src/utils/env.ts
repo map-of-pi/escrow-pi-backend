@@ -6,6 +6,7 @@ dotenv.config();
 export const env = {
   PORT: process.env.PORT || 8001,
   NODE_ENV: process.env.NODE_ENV || 'development',
+  SERVER_SECRET: process.env.SERVER_SECRET || 'default_secret',
   JWT_SECRET: process.env.JWT_SECRET || 'default_secret',
   PI_API_KEY: process.env.PI_API_KEY || '',
   PLATFORM_API_URL: process.env.PLATFORM_API_URL || '',

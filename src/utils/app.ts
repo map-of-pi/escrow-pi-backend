@@ -11,6 +11,7 @@ import docRouter from "../config/swagger";
 
 import userRoutes from "../routes/user.routes";
 import paymentsRouter from "../routes/payment.routes";
+import ApiServiceRouter from "../routes/adminApiKeys.routes";
 
 
 dotenv.config();
@@ -35,6 +36,7 @@ app.use("/api/docs", docRouter);
 
 app.use("/api/v1/users", userRoutes);
 app.use('/api/v1/payments', paymentsRouter);
+app.use('/api/v1/api-service', ApiServiceRouter);
 
 app.use("/", homeRoutes);
 
