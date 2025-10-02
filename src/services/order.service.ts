@@ -39,7 +39,6 @@ export async function createOrderSecure(
     try {
       session.startTransaction();
 
-      logger.info(`Creating order attempt ${attempt} for ${payload.sender.pi_username} to ${payload.receiver.pi_username} amount: ${payload.amount}`);
       const orderNo = await nextOrderNo(session);
       logger.info(`Attempt ${attempt}: Generated order number ${orderNo}`);
 

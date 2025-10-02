@@ -11,25 +11,6 @@ export interface IUser extends Document {
   user_name: string;
 };
 
-export interface IComment extends Document {
-  comment: string;
-  transaction_id: string;
-}
-
-export interface ITransaction extends Document {
-  sender: Types.ObjectId;
-  sender_pi_uid: string;
-  receiver: Types.ObjectId;
-  receiver_pi_uid: string;
-  amount: number;
-  status: TransactionEnum;
-  order_id: string;
-  a2u_payment_id: string;
-  u2a_payment_id: string;
-  u2a_txid: string;
-  a2u_txid: string;
-}
-
 export interface IPayment extends Document {
   user_id: Types.ObjectId;
   pi_payment_id: string;

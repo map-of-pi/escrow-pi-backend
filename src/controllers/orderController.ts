@@ -4,7 +4,7 @@ import logger from "../config/loggingConfig";
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
-    logger.info(`Processing order info: ${JSON.stringify(req.body)}`);
+    // logger.info(`Processing order info: ${JSON.stringify(req.body)}`);
     const { sender, receiver, amount, comment } = req.body;
     if (!sender || !receiver || amount<=0) {
       logger.warn('Missing required fields in order creation request');
