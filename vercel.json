@@ -2,15 +2,23 @@
   "version": 2,
   "builds": [
     {
-      "src": "src/utils/app.ts",
+      "src": "src/index.ts",
       "use": "@vercel/node",
-      "config": { "tsconfig": "tsconfig.json" }
+      "config": {
+        "includeFiles": [
+          "node_modules/swagger-ui-dist/**"
+        ]
+      }
     }
   ],
   "routes": [
     {
+      "src": "/api/docs/swagger-ui/(.*)",
+      "dest": "/node_modules/swagger-ui-dist/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "src/utils/app.ts"
+      "dest": "/src/index.ts"
     }
   ]
 }
