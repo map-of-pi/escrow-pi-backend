@@ -7,10 +7,10 @@ export const connectDB = async () => {
   try {
     console.log("🟢 [connectDB] Starting MongoDB connection process...");
     // Only log the MongoDB URL in non-production environments
-    if (env.NODE_ENV === 'development') {
+    // if (env.NODE_ENV === 'development') {
       logger.info(`Connecting to MongoDB with URL: ${env.MONGODB_URL}`);
       console.log(`🟢 [connectDB] MongoDB URL: ${env.MONGODB_URL}`);
-    }
+    // }
 
     // Log Mongoose connection state before attempting connection
     console.log(`🟢 [connectDB] Mongoose connection state BEFORE connect(): ${mongoose.connection.readyState}`);
