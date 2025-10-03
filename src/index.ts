@@ -8,14 +8,22 @@ import { env } from "./utils/env";
 
 dotenv.config();
 
+// Immediately invoke persistent connection
+let dbConnected = false;
+
 const startServer = async () => {
   console.log("🟢 [index.ts] Starting server initialization...");
   logger.info("Initiating server setup...");
   try {
-    console.log("🟢 [index.ts] Attempting to connect to MongoDB...");
-    // Establish connection to MongoDB
-    await connectDB();
-    console.log("✅ [index.ts] MongoDB connected successfully");
+    if (!dbConnected) {
+      console.log("🟢 [index.ts] Attempting to connect to MongoDB...");
+      // Establish connection to MongoDB
+      await connectDB();
+      dbConnected = true;
+      console.log("✅ [index.ts] MongoDB connected successfully");
+    } else {
+      console.log("✅ [index.ts] Using cached MongoDB connection");
+    }
 
     // In a non-serverless environment, start the server
     if (env.NODE_ENV === 'development') {
@@ -28,6 +36,7 @@ const startServer = async () => {
         });
       });
     }
+    
     console.log("🟢 [index.ts] Server setup completed.");
     logger.info("Server setup initiated.");
   } catch (error) {
