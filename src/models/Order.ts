@@ -1,6 +1,6 @@
 // src/models/Order.ts
 import mongoose, { Schema, InferSchemaType } from "mongoose";
-import { TransactionEnum } from "./enums/transactionEnum";
+import { OrderStatusEnum } from "./enums/orderStatusEnum";
 
 const OrderSchema = new Schema(
   {
@@ -12,10 +12,10 @@ const OrderSchema = new Schema(
     order_no: { type: String, unique: true, required: true, index: true }, // public ID
     status: {
       type: String,
-      enum: Object.values(TransactionEnum).filter(
+      enum: Object.values(OrderStatusEnum).filter(
         (value) => typeof value === "string"
       ),
-      default: TransactionEnum.Initiated,
+      default: OrderStatusEnum.Initiated,
     },
     u2a_payment_id: {
       type: String,

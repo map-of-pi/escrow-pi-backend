@@ -1,6 +1,6 @@
 import {Document, Types} from "mongoose";
 import { PaymentType } from "./models/enums/paymentType";
-import { TransactionEnum } from "./models/enums/transactionEnum";
+import { OrderStatusEnum } from "./models/enums/orderStatusEnum";
 
 // ========================
 // USER MODELS
@@ -25,7 +25,8 @@ export interface IPayment extends Document {
 
 
 export interface U2AMetadata {
-  payment_type: PaymentType;
+  orderType: OrderStatusEnum;
+  order_no: string
 }
 
 export interface A2UMetadata { 
@@ -48,7 +49,9 @@ export interface PaymentDTO {
   created_at: string;
   identifier: string;
   memo: string;
-  metadata: U2AMetadata | A2UMetadata;
+  metadata: {
+    [key: string]: any;
+  };
   status: {
     developer_approved: boolean;
     transaction_verified: boolean;

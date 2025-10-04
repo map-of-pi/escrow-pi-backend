@@ -2,6 +2,8 @@ import axios from 'axios';
 import { platformAPIClient } from '../config/platformAPIclient';
 import logger from '../config/loggingConfig';
 import { PaymentDTO, PaymentInfo, U2AMetadata } from '../types';
+import { updateOrder } from '../services/order.service';
+import { OrderStatusEnum } from '../models/enums/orderStatusEnum';
 
 const logPlatformApiError = (error: any, context: string) => {
   if (error.response) {
@@ -25,7 +27,7 @@ const logPlatformApiError = (error: any, context: string) => {
 const completePiPayment = async (piPaymentId: string, txid: string) => {
   const res = await platformAPIClient.get(`/v2/payments/${ piPaymentId }`);
   const currentPayment: PaymentDTO = res.data;
-  const userPiUid = currentPayment.user_uid;
+  const metadata = currentPayment.metadata;
 
   if (!txid) {
     logger.warn("No transaction ID");
@@ -34,6 +36,7 @@ const completePiPayment = async (piPaymentId: string, txid: string) => {
   
   // Mark the payment as completed
   logger.info("Payment record marked as completed");
+  await updateOrder(metadata.order_no, OrderStatusEnum.Paid);
 
   // Notify Pi Platform of successful completion
   const completedPiPayment = await platformAPIClient.post(`/v2/payments/${ piPaymentId }/complete`, { txid });      

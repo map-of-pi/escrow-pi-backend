@@ -1,4 +1,4 @@
-export enum TransactionEnum {
+export enum OrderStatusEnum {
   Initiated='Initiated',
   Paid='Paid',
   Failed='Failed',

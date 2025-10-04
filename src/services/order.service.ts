@@ -4,35 +4,14 @@ import { nextOrderNo } from "../helpers/getNextOrderNo";
 import { Comment } from "../models/Comment";
 import { Order, OrderType } from "../models/Order";
 import { IUser } from "../types";
-
-export const addComment = async (
-  orderId: string, 
-  description: string, 
-  session?: ClientSession
-) => {
-  logger.info(`Adding comment to order ${orderId}`);
-  try {
-    const order = await Order.findById(orderId).session(session || null);
-    if (!order) throw new Error("Order not found");
-
-    const newComment = new Comment({
-      description,
-      order_no: order.order_no,
-      order_id: order._id
-    });
-
-    const comment = await newComment.save({ session });
-    return comment;
-  } catch (error: any) {
-    logger.error("Error in addComment", { error: error.message, stack: error.stack });
-    throw error;
-  }
-};
+import { error } from "winston";
+import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
+import { addComment } from "./comment.service";
 
 export async function createOrderSecure(
   payload: { sender: IUser; receiver: IUser; amount: number; comment?: string },
   maxRetries = 3
-): Promise<OrderType> {
+): Promise<string> {
   logger.info(`Starting secure order creation for`);
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const session = await Order.startSession();
@@ -62,7 +41,7 @@ export async function createOrderSecure(
       await session.commitTransaction();
       session.endSession();
 
-      return order;
+      return order.order_no;
 
     } catch (err: any) {
       await session.abortTransaction().catch(() => {});
@@ -74,4 +53,13 @@ export async function createOrderSecure(
   }
 
   throw new Error("Failed to create order service after retries");
+}
+
+export const updateOrder = async (order_no:string, status:OrderStatusEnum) => {
+  try {
+    const updatedOrder = Order.findOneAndUpdate({order_no}, {status}).lean();
+    return updatedOrder
+  } catch (error:any) {
+    throw new Error('Error updating order')
+  }
 }

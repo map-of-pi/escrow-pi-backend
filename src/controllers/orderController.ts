@@ -12,9 +12,9 @@ export const createOrder = async (req: Request, res: Response) => {
     } 
     logger.info(`${sender.pi_username} is creating an order to ${receiver.pi_username} for amount: ${amount}`);
     // Assume createOrderSecure is a function that creates an order securely
-    const order = await createOrderSecure({ sender, receiver, amount, comment });
-    logger.info(`Order created successfully with order number: ${order.order_no}`);
-    return res.status(200).json(order);
+    const order_no = await createOrderSecure({ sender, receiver, amount, comment });
+    logger.info(`Order created successfully with order number: ${order_no}`);
+    return res.status(200).json(order_no);
   } catch (error) {
     logger.error("Controller Error creating order:", {error});
     return res.status(500).json({ message: "Internal server error", error });
