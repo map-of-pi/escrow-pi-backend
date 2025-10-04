@@ -1,12 +1,12 @@
 export enum OrderStatusEnum {
-  Initiated='Initiated',
-  Paid='Paid',
-  Failed='Failed',
-  Requested='Requested',
-  Disputed='Disputed',
-  Fulfilled='Fulfilled',
-  Completed='Completed',
-  Cancelled='Cancelled',
-  Declined='Declined',
-  Expired='Expired'
+  Initiated='initiated',
+  Paid='paid',
+  Failed='failed',
+  Requested='requested',
+  Disputed='disputed',
+  Fulfilled='fulfilled',
+  Completed='completed',
+  Cancelled='cancelled',
+  Declined='declined',
+  Expired='expired'
 }
