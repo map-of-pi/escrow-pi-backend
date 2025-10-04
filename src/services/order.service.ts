@@ -69,7 +69,7 @@ export const getUserOrders = async (authUser:IUser) => {
     const updatedOrder = await Order.find({
       $or: [{ sender_id: authUser._id }, { receiver_id: authUser._id }]
     })
-      .select("-sender_id -receiver_id -_id")
+      .select("-sender_id -receiver_id -u2a_payment_id -a2u_payment_id -_id")
       .lean();
 
     return updatedOrder;
@@ -81,7 +81,7 @@ export const getUserOrders = async (authUser:IUser) => {
 export const getUserSingleOrder = async (order_no:string) => {
   try {
     const updatedOrder = await Order.findOne({order_no})
-      .select("-sender_id -receiver_id -_id")
+      .select("-sender_id -receiver_id -u2a_payment_id -a2u_payment_id -_id")
       .lean();
 
     return updatedOrder;
