@@ -1,7 +1,7 @@
 import { ClientSession } from "mongoose";
 import logger from "../config/loggingConfig";
 import { nextOrderNo } from "../helpers/getNextOrderNo";
-import { Comment } from "../models/Comment";
+import { Comment, CommenType } from "../models/Comment";
 import { Order, OrderType } from "../models/Order";
 import { IUser } from "../types";
 import { error } from "winston";
@@ -57,6 +57,7 @@ export async function createOrderSecure(
 
 export const updateOrder = async (order_no:string, status:OrderStatusEnum) => {
   try {
+    logger.info('public order no', {order_no})
     const updatedOrder = Order.findOneAndUpdate({order_no}, {status}).lean();
     return updatedOrder
   } catch (error:any) {
@@ -70,6 +71,7 @@ export const getUserOrders = async (authUser:IUser) => {
       $or: [{ sender_id: authUser._id }, { receiver_id: authUser._id }]
     })
       .select("-sender_id -receiver_id -u2a_payment_id -a2u_payment_id -_id")
+      .sort({ updatedAt: -1 })
       .lean();
 
     return updatedOrder;
@@ -78,14 +80,27 @@ export const getUserOrders = async (authUser:IUser) => {
   }
 }
 
-export const getUserSingleOrder = async (order_no:string) => {
+export const getUserSingleOrder = async (order_no: string) => {
   try {
-    const updatedOrder = await Order.findOne({order_no})
+    // 🔹 Find the order by order_no
+    const order = await Order.findOne({ order_no })
       .select("-sender_id -receiver_id -u2a_payment_id -a2u_payment_id -_id")
       .lean();
 
-    return updatedOrder;
-  } catch (error:any) {
-    throw new Error('Service error getting user orders')
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    // 🔹 Find all comments linked to this order
+    const comments = await Comment.find({ order_no })
+      .select("-_id -__v") // optional: exclude metadata fields
+      .sort({ createdAt: 1 }) // oldest to newest
+      .lean();
+
+    // 🔹 Attach comments to the order object
+    return { order: {...order}, comments };
+  } catch (error: any) {
+    logger.error("Error fetching user single order:", error);
+    throw new Error("Service error getting user single order");
   }
-}
+};
