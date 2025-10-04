@@ -63,3 +63,29 @@ export const updateOrder = async (order_no:string, status:OrderStatusEnum) => {
     throw new Error('Error updating order')
   }
 }
+
+export const getUserOrders = async (authUser:IUser) => {
+  try {
+    const updatedOrder = await Order.find({
+      $or: [{ sender_id: authUser._id }, { receiver_id: authUser._id }]
+    })
+      .select("-sender_id -receiver_id -_id")
+      .lean();
+
+    return updatedOrder;
+  } catch (error:any) {
+    throw new Error('Service error getting user orders')
+  }
+}
+
+export const getUserSingleOrder = async (order_no:string) => {
+  try {
+    const updatedOrder = await Order.findOne({order_no})
+      .select("-sender_id -receiver_id -_id")
+      .lean();
+
+    return updatedOrder;
+  } catch (error:any) {
+    throw new Error('Service error getting user orders')
+  }
+}
