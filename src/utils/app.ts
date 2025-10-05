@@ -1,42 +1,38 @@
 import express from "express"
-import dotenv from "dotenv";
-
-import homeRoutes from "../routes/home.routes";
 import cookieParser from 'cookie-parser';
 import cors from "cors"
 import path from "path";
+import { env } from "../utils/env";
 
 import docRouter from "../config/swagger";
 import requestLogger from "../middlewares/logger";
-
-import userRoutes from "../routes/user.routes";
+import homeRoutes from "../routes/home.routes";
 import paymentsRouter from "../routes/payment.routes";
 import orderRouter from "../routes/order.routes";
-
-
-dotenv.config();
+import userRoutes from "../routes/user.routes";
 
 const app = express();
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+app.use(cookieParser());
 app.use(requestLogger);
 
 app.use(cors({
-    origin: process.env.CORS_ORIGIN_URL,
-    credentials: true
+  origin: env.CORS_ORIGIN_URL,
+  credentials: true
 }));
 app.use(cookieParser());
 
-// // serve static files for Swagger documentation
+// serve static files for Swagger documentation
 app.use('/api/docs', express.static(path.join(__dirname, '../config/docs')));
-
 // Swagger OpenAPI documentation
 app.use("/api/docs", docRouter);
 
+// Routes
 app.use("/api/v1/users", userRoutes);
 app.use('/api/v1/payments', paymentsRouter);
-app.use('/api/v1/orders', orderRouter)
+app.use('/api/v1/orders', orderRouter);
 
 app.use("/", homeRoutes);
 
