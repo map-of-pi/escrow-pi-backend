@@ -12,6 +12,8 @@ const userSchema = new Schema<IUser>(
     pi_username: {
       type: String,
       required: true,
+      index: true,
+      unique: true,
     },
     user_name: {
       type: String,
