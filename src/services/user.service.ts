@@ -77,6 +77,16 @@ export const getUser = async (pi_uid: string): Promise<IUser | null> => {
   }
 };
 
+export const validateUsername = async (pi_username: string): Promise<IUser | null> => {
+  try {
+    const user = await User.findOne({ pi_username }).lean();
+    return user ? user as IUser : null;
+  } catch (error) {
+    logger.error(`Failed to validate username ${ pi_username }: ${ error }`);
+    throw error;
+  }
+};
+
 export const deleteUser = async (pi_uid: string | undefined): Promise<{ user: IUser | null }> => {
   try {
     // delete the user
