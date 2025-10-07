@@ -4,12 +4,46 @@ import { nextOrderNo } from "../helpers/getNextOrderNo";
 import { Comment, CommenType } from "../models/Comment";
 import { Order, OrderType } from "../models/Order";
 import { IUser } from "../types";
-import { error } from "winston";
 import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
 import { addComment } from "./comment.service";
 
+function buildStatusComment(
+  username: string | undefined,
+  status: OrderStatusEnum,
+  extraComment?: string
+): string {
+  const actor = username || "System";
+  let base: string;
+
+  switch (status) {
+    case OrderStatusEnum.Initiated:
+      base = `${actor} has initiated a new payment.`;
+      break;
+
+    case OrderStatusEnum.Requested:
+      base = `${actor} has requested a new payment.`;
+      break;
+
+    case OrderStatusEnum.Paid:
+      base = `System has marked the order as paid.`;
+      break;
+
+    case OrderStatusEnum.Completed:
+      base = `System has confirmed this order as completed.`;
+      break;
+
+    default:
+      base = `${actor} has marked the order as ${status}.`;
+      break;
+  }
+
+  // ✅ Append any user-supplied comment
+  return extraComment?.trim() ? `${base}\n${extraComment.trim()}` : base;
+}
+
+
 export async function createOrderSecure(
-  payload: { sender: IUser; receiver: IUser; amount: number; comment?: string },
+  payload: { sender: IUser; receiver: IUser; amount: number; authUser: IUser; comment?: string },
   maxRetries = 3
 ): Promise<string> {
   logger.info(`Starting secure order creation for`);
@@ -33,8 +67,16 @@ export async function createOrderSecure(
 
       const order = await newOrder.save({ session });
 
-      if (order && payload.comment?.trim()) {
-        await addComment(order._id.toString(), payload.comment, session);
+      // ✅ Build and add comment
+      const fullComment = buildStatusComment(payload.authUser?.pi_username, OrderStatusEnum.Initiated, payload.comment);
+
+      if (order && fullComment.trim()) {
+        await addComment(
+          orderNo, 
+          fullComment, 
+          payload.authUser.pi_username,  
+          session
+        );
         logger.info(`Added comment to order ${order.order_no}`);
       }
 
@@ -55,15 +97,66 @@ export async function createOrderSecure(
   throw new Error("Failed to create order service after retries");
 }
 
-export const updateOrder = async (order_no:string, status:OrderStatusEnum) => {
-  try {
-    logger.info('public order no', {order_no})
-    const updatedOrder = Order.findOneAndUpdate({order_no}, {status}).lean();
-    return updatedOrder
-  } catch (error:any) {
-    throw new Error('Error updating order')
+function resolveNextStatus(prevStatus: OrderStatusEnum, incomingStatus: OrderStatusEnum): OrderStatusEnum {
+  if (prevStatus === OrderStatusEnum.Requested && incomingStatus === OrderStatusEnum.Paid) {
+    return OrderStatusEnum.Fulfilled;
   }
+  return incomingStatus;
 }
+
+export const updateOrder = async (
+  order_no: string,
+  status: OrderStatusEnum,
+  authUser?: IUser,
+  comment: string = ''
+) => {
+  let newComment = null;
+
+  try {
+    logger.info('Processing update for order', { order_no, requestedStatus: status });
+
+    // 🔹 Fetch current order first
+    const currentOrder = await Order.findOne({ order_no }).lean();
+    if (!currentOrder) {
+      throw new Error('Order not found');
+    }
+
+    // 🔹 Determine actual status transition
+    const nextStatus = resolveNextStatus(currentOrder.status, status);
+
+    // 🔹 Update order with resolved status
+    const updatedOrder = await Order.findOneAndUpdate(
+      { order_no },
+      { status: nextStatus },
+      { new: true }
+    ).lean();
+
+    if (!updatedOrder) {
+      throw new Error('Error updating order status');
+    }
+
+    // ✅ Build and add comment
+    const fullComment = buildStatusComment(authUser?.pi_username, nextStatus, comment);
+
+    // 🔹 Save the comment if user info is available
+    if (authUser) {
+      newComment = await addComment(
+        order_no,
+        fullComment,
+        authUser.pi_username
+      );
+    }
+
+    logger.info(`Order ${order_no} updated to ${nextStatus}`);
+
+    return { order: updatedOrder, comment: newComment };
+
+  } catch (error: any) {
+    logger.error('Error updating order', { error });
+    throw new Error('Error updating order');
+  }
+};
+
 
 export const getUserOrders = async (authUser:IUser) => {
   try {
@@ -93,7 +186,7 @@ export const getUserSingleOrder = async (order_no: string) => {
 
     // 🔹 Find all comments linked to this order
     const comments = await Comment.find({ order_no })
-      .select("-_id -__v") // optional: exclude metadata fields
+      .select("-__v") // optional: exclude metadata fields
       .sort({ createdAt: 1 }) // oldest to newest
       .lean();
 
