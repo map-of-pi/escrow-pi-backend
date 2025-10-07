@@ -12,6 +12,7 @@ import requestLogger from "../middlewares/logger";
 import userRoutes from "../routes/user.routes";
 import paymentsRouter from "../routes/payment.routes";
 import orderRouter from "../routes/order.routes";
+import commentRouter from "../routes/comments.routes";
 
 
 dotenv.config();
@@ -36,7 +37,8 @@ app.use("/api/docs", docRouter);
 
 app.use("/api/v1/users", userRoutes);
 app.use('/api/v1/payments', paymentsRouter);
-app.use('/api/v1/orders', orderRouter)
+app.use('/api/v1/orders', orderRouter);
+app.use('/api/v1/comments', commentRouter);
 
 app.use("/", homeRoutes);
 
