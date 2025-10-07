@@ -3,8 +3,8 @@ import * as Sentry from "@sentry/node";
 import { nodeProfilingIntegration } from "@sentry/profiling-node";
 import { transports } from "winston";
 
-// initialize Sentry only in production environment
-if (env.NODE_ENV === 'production') {
+// initialize Sentry only in a non-developmental environment
+if (env.NODE_ENV === 'production' || env.NODE_ENV === 'staging') {
   try {
     // initialize Sentry
     Sentry.init({
@@ -21,7 +21,7 @@ if (env.NODE_ENV === 'production') {
   }
 }
 
-// create a custom Sentry transport for Winston in production
+// create a custom Sentry transport for Winston in a non-developmental environment
 class SentryTransport extends transports.Stream {
   // categories that should always be sent to Sentry regardless of log level
   private alwaysSendCategories = new Set(['stats']);

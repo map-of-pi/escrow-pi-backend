@@ -13,7 +13,7 @@ export const getLoggerConfig = (): { level: string; format: any; transports: any
     logLevel = 'info';
     logFormat = format.combine(format.colorize(), format.simple());
     loggerTransports.push(new transports.Console({ format: logFormat }));
-  } else if (env.NODE_ENV === 'production') {
+  } else if (env.NODE_ENV === 'production' || env.NODE_ENV === 'staging') {
     logLevel = 'error';
     logFormat = format.combine(
       format.errors({ stack: true }),
