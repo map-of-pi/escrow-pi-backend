@@ -50,7 +50,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     const result = await updateOrder(orderNo, status, authUser);
     logger.info(`Order updated successfully with order number: ${result.order?.order_no}`);
 
-    return res.status(200).json(result.order?.order_no);
+    return res.status(200).json(result);
   } catch (error) {
     logger.error("Controller Error creating order:", {error});
     return res.status(500).json({ message: "Internal server error", error });
