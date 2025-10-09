@@ -67,6 +67,18 @@ export interface PaymentDTO {
   },
 };
 
+// ========================
+// NOTIFICATION
+// ========================
+export interface INotification extends Document {
+  _id: string;
+  pi_uid: string;
+  is_cleared: boolean;
+  reason: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export interface IA2UJob extends Document {
   sellerPiUid: string;
   amount: number;
