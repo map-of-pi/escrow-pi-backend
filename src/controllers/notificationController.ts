@@ -20,7 +20,7 @@ export const createNotification = async (req: Request, res: Response) => {
 };
 
 export const getNotifications = async (req: Request, res: Response) => {
-  const { pi_uid } = req.params;
+  const pi_uid = req.currentUser?.pi_uid as string;
   const skip = req.query.skip ? Number(req.query.skip) : 0;
   const limit = req.query.limit ? Number(req.query.limit) : 20;
 

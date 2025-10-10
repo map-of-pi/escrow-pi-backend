@@ -27,7 +27,7 @@ export const verifyToken = async (
   const token = tokenFromCookie || tokenFromHeader;
   console.log(">>> [verifyToken] Token from cookie:", tokenFromCookie);
   console.log(">>> [verifyToken] Token from header:", tokenFromHeader);
-  console.log(">>> [verifyToken] Token selected for verification:", token);
+  console.log(">>> [verifyToken] Token selected for verification:", token)
 
   if (!token) {
     console.warn(">>> [verifyToken] Authentication token is missing.");

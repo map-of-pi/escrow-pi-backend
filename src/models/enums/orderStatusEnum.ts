@@ -5,7 +5,7 @@ export enum OrderStatusEnum {
   Requested='requested',
   Disputed='disputed',
   Fulfilled='fulfilled',
-  Completed='completed',
+  Released='released',
   Cancelled='cancelled',
   Declined='declined',
   Expired='expired'

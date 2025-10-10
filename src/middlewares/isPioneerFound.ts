@@ -11,11 +11,11 @@ export const isPioneerFound = async (
     const authHeader = req.headers.authorization;
     const tokenFromHeader = authHeader && authHeader.split(" ")[1];
 
-    console.log(">>> [isPioneerFound] Incoming request headers:", req.headers);
     if (!tokenFromHeader) {
       console.warn(">>> [isPioneerFound] No Authorization token provided.");
       return res.status(401).json({ message: "Missing Authorization token" });
     }
+
     console.log(">>> [isPioneerFound] Token extracted from header:", tokenFromHeader);
 
     try {
@@ -25,7 +25,7 @@ export const isPioneerFound = async (
       });
 
       console.log(">>> [isPioneerFound] Response from /v2/me:", me.data);
-      
+
       if (me && me.data) {
         const user = {
           pi_uid: me.data.uid,

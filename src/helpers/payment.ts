@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { platformAPIClient } from '../config/platformAPIclient';
 import logger from '../config/loggingConfig';
-import { PaymentDTO, PaymentInfo, U2AMetadata } from '../types';
+import { IUser, PaymentDTO, PaymentInfo, U2AMetadata } from '../types';
 import { updateOrder } from '../services/order.service';
 import { OrderStatusEnum } from '../models/enums/orderStatusEnum';
+import { getUser } from '../services/user.service';
 
 const logPlatformApiError = (error: any, context: string) => {
   if (error.response) {
@@ -36,7 +37,8 @@ const completePiPayment = async (piPaymentId: string, txid: string) => {
   
   // Mark the payment as completed
   logger.info("Payment record marked as completed");
-  await updateOrder(metadata.order_no, OrderStatusEnum.Paid);
+  const authUser = await getUser(currentPayment.user_uid) as IUser;
+  await updateOrder(metadata.order_no, OrderStatusEnum.Paid, authUser, currentPayment.identifier);
 
   // Notify Pi Platform of successful completion
   const completedPiPayment = await platformAPIClient.post(`/v2/payments/${ piPaymentId }/complete`, { txid });      
@@ -93,9 +95,10 @@ export const processPaymentApproval = async (
     // Fetch payment details from the Pi platform using the payment ID
     const res = await platformAPIClient.get(`/v2/payments/${ paymentId }`);
     const currentPayment: PaymentDTO = res.data;
-    const paymentMetadata = currentPayment.metadata as object;
+    const metadata = currentPayment.metadata;
 
-    logger.info("payment approved from backend with metadata: ", {paymentMetadata})
+    await updateOrder(metadata.order_no, OrderStatusEnum.Initiated, undefined, currentPayment.identifier);
+    logger.info("payment approved from backend with metadata: ", {metadata})
 
     // Approve the payment on the Pi platform
     await platformAPIClient.post(`/v2/payments/${ currentPayment.identifier }/approve`);

@@ -6,7 +6,7 @@ import { verifyToken } from "../middlewares/verifyToken";
 const notificationRoutes = Router();
 
 // Get notifications for a user
-notificationRoutes.get("/:pi_uid", notificationController.getNotifications);
+notificationRoutes.get("/", verifyToken, notificationController.getNotifications);
 
 // Create a new notification (auth required)
 notificationRoutes.post("/", verifyToken, notificationController.createNotification);
