@@ -7,18 +7,14 @@ import { env } from "../utils/env";
 import logger from '../config/loggingConfig';
 
 export const generateUserToken = (user: IUser) => {
-  console.log(`>>> [generateUserToken] Called for user: ${user.pi_uid}`);
   try {
-    console.log(`>>> [generateUserToken] Signing JWT for user: ${user.pi_uid}`);
     logger.info(`Generating token for user: ${user.pi_uid}`);
     const token = jwt.sign({ userId: user.pi_uid, _id: user._id }, env.JWT_SECRET, {
       expiresIn: "1d", // 1 day
     });
-    console.log(`>>> [generateUserToken] Successfully generated token for user: ${user.pi_uid}`);
     logger.info(`Successfully generated token for user: ${user.pi_uid}`);
     return token;
   } catch (error) {
-    console.error(`>>> [generateUserToken] Failed to generate user token for piUID ${user.pi_uid}:`, error);
     logger.error(`Failed to generate user token for piUID ${ user.pi_uid }:`, error);
     throw new Error('Failed to generate user token; please try again');
   }

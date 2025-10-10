@@ -55,7 +55,6 @@ async function processNextJob(): Promise<void> {
       last_error: null,
     });
 
-    console.log(`[✔] A2U payment completed for ${sellerPiUid}`);
   } catch (err: any) {
     
     const willRetry = attempts < MAXATTEMPT;

@@ -25,24 +25,17 @@ export const verifyToken = async (
 
   // Prioritize token from cookies, then from header
   const token = tokenFromCookie || tokenFromHeader;
-  console.log(">>> [verifyToken] Token from cookie:", tokenFromCookie);
-  console.log(">>> [verifyToken] Token from header:", tokenFromHeader);
-  console.log(">>> [verifyToken] Token selected for verification:", token);
 
   if (!token) {
-    console.warn(">>> [verifyToken] Authentication token is missing.");
     logger.warn("Authentication token is missing.");
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
-    console.log(">>> [verifyToken] Decoding token...");
     // Decode the token to get the user information
     const currentUser = await decodeUserToken(token);
-    console.log(">>> [verifyToken] decodeUserToken result:", currentUser);
 
     if (!currentUser) {
-      console.warn(">>> [verifyToken] Authentication token is invalid or expired.");
       logger.warn("Authentication token is invalid or expired.");
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -50,10 +43,8 @@ export const verifyToken = async (
     // Attach currentUser to the request object
     req.currentUser = currentUser;
     req.token = token;
-    console.log(`>>> [verifyToken] Token verified successfully for user: ${currentUser.pi_uid}`);
     next();
   } catch (error) {
-    console.error(">>> [verifyToken] Failed to verify token:", error);
     logger.error('Failed to verify token:', error);
     return res.status(500).json({ message: 'Failed to verify token; please try again later' });
   }
