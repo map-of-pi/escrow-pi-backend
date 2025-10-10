@@ -28,7 +28,7 @@ function buildStatusComment(
       base = `System has marked the order as paid.`;
       break;
 
-    case OrderStatusEnum.Completed:
+    case OrderStatusEnum.Released:
       base = `System has confirmed this order as completed.`;
       break;
 
