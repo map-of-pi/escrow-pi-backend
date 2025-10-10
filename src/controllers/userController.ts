@@ -27,8 +27,7 @@ export const authenticateUser = async (req: Request, res: Response) => {
 
     console.log(`>>> [authenticateUser] Generating JWT token for user: ${user.pi_uid}`);
     const token = jwtHelper.generateUserToken(user);
-    // We should not be logging JWT token for security reasons
-    // console.log(`>>> [authenticateUser] JWT generated: ${token}`);
+
     const expiresDate = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000); // 1 day
     console.log(`>>> [authenticateUser] Cookie will expire: ${expiresDate.toISOString()}`);
 
