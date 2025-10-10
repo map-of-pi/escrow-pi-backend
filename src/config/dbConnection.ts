@@ -7,6 +7,7 @@ let cached: { conn: typeof mongoose | null } = { conn: null };
 export const connectDB = async () => {
   if (cached.conn) {
     logger.info("✅ [connectDB] Using cached MongoDB connection");
+    console.log("✅ [connectDB] Using cached MongoDB connection");
     return cached.conn;
   }
   

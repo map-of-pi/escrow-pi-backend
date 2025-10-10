@@ -9,6 +9,7 @@ import requestLogger from "../middlewares/logger";
 import homeRoutes from "../routes/home.routes";
 import paymentsRouter from "../routes/payment.routes";
 import orderRouter from "../routes/order.routes";
+import commentRouter from "../routes/comments.routes";
 import userRoutes from "../routes/user.routes";
 import notificationRoutes from "../routes/notification.routes";
 
@@ -34,6 +35,7 @@ app.use("/api/docs", docRouter);
 app.use("/api/v1/users", userRoutes);
 app.use('/api/v1/payments', paymentsRouter);
 app.use('/api/v1/orders', orderRouter);
+app.use('/api/v1/comments', commentRouter);
 app.use('/api/v1/notifications', notificationRoutes);
 
 app.use("/", homeRoutes);
