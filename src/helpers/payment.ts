@@ -4,7 +4,8 @@ import logger from '../config/loggingConfig';
 import { IUser, PaymentDTO, PaymentInfo, U2AMetadata } from '../types';
 import { updateOrder } from '../services/order.service';
 import { OrderStatusEnum } from '../models/enums/orderStatusEnum';
-import { getUser } from '../services/user.service';
+import { getUser, validateUsername } from '../services/user.service';
+import { enqueuePayment } from '../cron/utils/queues/queue';
 
 const logPlatformApiError = (error: any, context: string) => {
   if (error.response) {
@@ -37,8 +38,15 @@ const completePiPayment = async (piPaymentId: string, txid: string) => {
   
   // Mark the payment as completed
   logger.info("Payment record marked as completed");
+  const today = new Date()
   const authUser = await getUser(currentPayment.user_uid) as IUser;
-  await updateOrder(metadata.order_no, OrderStatusEnum.Paid, authUser, currentPayment.identifier);
+  const updatedOrder = await updateOrder(metadata.order_no, OrderStatusEnum.Paid, authUser, currentPayment.identifier, today);
+
+  // Enqueue the payment for further processing (e.g., A2U payment)
+  await enqueuePayment(
+    updatedOrder.order?._id.toString(), 
+    currentPayment.memo
+  );
 
   // Notify Pi Platform of successful completion
   const completedPiPayment = await platformAPIClient.post(`/v2/payments/${ piPaymentId }/complete`, { txid });      

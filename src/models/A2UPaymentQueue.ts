@@ -3,7 +3,8 @@ import { IA2UJob } from "../types";
 
 const A2UPaymentQueueSchema = new Schema<IA2UJob>(
   {
-    sellerPiUid: { type: String, required: true },
+    receiverPiUid: { type: String, required: true },
+    senderPiUid: { type: String, required: true },
     amount: { type: Number, required: true },
     xRef_ids: [{ type: String, required: true }],
     memo: { type: String, require: true },

@@ -43,6 +43,14 @@ export interface PaymentInfo {
   };
 };
 
+export interface A2UPaymentDataType {
+  senderPiUid: string,
+  receiverPiUid: string,
+  amount: string,
+  orderIds: string[],
+  memo: string
+};
+
 export interface PaymentDTO {
   amount: number;
   user_uid: string;
@@ -80,7 +88,8 @@ export interface INotification extends Document {
 };
 
 export interface IA2UJob extends Document {
-  sellerPiUid: string;
+  receiverPiUid: string;
+  senderPiUid: string;
   amount: number;
   xRef_ids: string[];
   memo: string,
@@ -91,10 +100,3 @@ export interface IA2UJob extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
-
-export interface A2UPaymentDataType {
-  sellerPiUid: string,
-  amount: string,
-  xRefIds: string[],
-  memo: string
-};

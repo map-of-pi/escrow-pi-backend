@@ -109,6 +109,7 @@ export const updateOrder = async (
   requestedStatus: OrderStatusEnum,
   authUser?: IUser,
   u2a_payment_id?: string,
+  u2a_completed_at?: Date,
   a2u_payment_id?: string,
   comment: string = ""
 ): Promise<{ order: any; comment: any }> => {
@@ -134,6 +135,7 @@ export const updateOrder = async (
     // 3️⃣ Apply update (only relevant fields)
     currentOrder.status = nextStatus;
     if (u2a_payment_id) currentOrder.u2a_payment_id = u2a_payment_id;
+    if (u2a_completed_at) currentOrder.u2a_completed_at = u2a_completed_at;
     if (a2u_payment_id) currentOrder.a2u_payment_id = a2u_payment_id;
 
     // 4️⃣ Persist updated order
@@ -209,59 +211,3 @@ export const getUserSingleOrder = async (order_no: string) => {
     throw new Error("Service error getting user single order");
   }
 };
-
-export async function handleOrderPayment(
-  order_no: string,
-  authUser: IUser,
-  u2a_payment_id: string,
-  a2u_payment_id: string,
-  extraComment?: string
-): Promise<OrderType> {
-  logger.info(`🔹 Processing payment for order_no=${order_no}`);
-
-  // Validate required fields
-  if (!order_no || !u2a_payment_id || !a2u_payment_id) {
-    throw new Error("Missing required parameters to process payment.");
-  }
-
-  // Fetch the order
-  const order = await Order.findOne({ order_no });
-  if (!order) {
-    throw new Error(`Order not found for order_no: ${order_no}`);
-  }
-
-  // Ensure valid transition
-  if (order.status === OrderStatusEnum.Paid) {
-    logger.warn(`Order ${order_no} already marked as Paid.`);
-    return order;
-  }
-
-  if (order.status !== OrderStatusEnum.Requested && order.status !== OrderStatusEnum.Initiated) {
-    throw new Error(
-      `Invalid status transition: Cannot mark order ${order_no} as Paid from ${order.status}`
-    );
-  }
-
-  // Update fields
-  order.status = OrderStatusEnum.Paid;
-  order.u2a_payment_id = u2a_payment_id;
-  order.a2u_payment_id = a2u_payment_id;
-
-  // Save changes
-  const updatedOrder = await order.save();
-  logger.info(`✅ Order ${order_no} successfully updated as Paid.`);
-
-  // Add comment to the order history
-  try {
-    const statusComment = buildStatusComment(
-      authUser?.pi_username,
-      OrderStatusEnum.Paid,
-      extraComment
-    );
-    await addComment(order._id.toString(), statusComment, authUser?.pi_username);
-  } catch (commentErr) {
-    logger.error("⚠️ Failed to add payment comment", commentErr);
-  }
-
-  return updatedOrder.toObject();
-}
