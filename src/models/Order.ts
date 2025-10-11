@@ -26,7 +26,15 @@ const OrderSchema = new Schema(
       type: String,
       unique: true,
       sparse: true,
-    }
+    },
+    u2a_completed_at: {
+      type: Date,
+      required: false,
+    },
+    a2u_completed_at: {
+      type: Date,
+      required: false,
+    },
   },
   { timestamps: true }
 );

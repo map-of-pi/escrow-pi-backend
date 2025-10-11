@@ -36,7 +36,6 @@ export const verifyToken = async (
   }
 
   try {
-    console.log(">>> [verifyToken] Decoding token...");
     // Decode the token to get the user information
     const currentUser = await decodeUserToken(token);
     console.log(">>> [verifyToken] decodeUserToken result:", currentUser);

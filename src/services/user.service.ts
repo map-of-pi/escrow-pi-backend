@@ -80,7 +80,8 @@ export const getUser = async (pi_uid: string): Promise<IUser | null> => {
 export const validateUsername = async (pi_username: string): Promise<IUser | null> => {
   try {
     const user = await User.findOne({ pi_username }).lean();
-    return user ? user as IUser : null;
+    if(!user) throw new Error(`Failed to find user with ${pi_username}`)
+    return user;
   } catch (error) {
     logger.error(`Failed to validate username ${ pi_username }: ${ error }`);
     throw error;

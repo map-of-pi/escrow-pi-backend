@@ -1,6 +1,6 @@
 import logger from "../../config/loggingConfig";
 import A2UPaymentQueue from "../../models/A2UPaymentQueue";
-// import { createA2UPayment } from "../../services/payment.service";
+import { createA2UPayment } from "../../services/payment.service";
 
 // workers/mongodbA2UWorker.ts
 async function processNextJob(): Promise<void> {
@@ -36,17 +36,18 @@ async function processNextJob(): Promise<void> {
 
   if (!job) return;
 
-  const { sellerPiUid, amount, xRef_ids, _id, attempts, memo, last_a2u_date } = job;
+  const { receiverPiUid, senderPiUid, amount, xRef_ids, _id, attempts, memo, last_a2u_date } = job;
 
   try {
-    logger.info(`[→] Attempt ${attempts}/${MAXATTEMPT} for ${sellerPiUid}`);
+    logger.info(`[→] Attempt ${attempts}/${MAXATTEMPT} for ${receiverPiUid}`);
 
-    // await createA2UPayment({
-    //   sellerPiUid: sellerPiUid,
-    //   amount: amount.toString(),
-    //   memo: "A2U payment",
-    //   xRefIds: xRef_ids
-    // })
+    await createA2UPayment({
+      receiverPiUid: receiverPiUid,
+      amount: amount.toString(),
+      memo: "A2U payment",
+      orderIds: xRef_ids,
+      senderPiUid:senderPiUid
+    })
 
     await A2UPaymentQueue.findByIdAndUpdate(_id, {
       status: 'completed',
@@ -55,7 +56,7 @@ async function processNextJob(): Promise<void> {
       last_error: null,
     });
 
-    console.log(`[✔] A2U payment completed for ${sellerPiUid}`);
+    console.log(`[✔] A2U payment completed for ${receiverPiUid}`);
   } catch (err: any) {
     
     const willRetry = attempts < MAXATTEMPT;
@@ -66,7 +67,7 @@ async function processNextJob(): Promise<void> {
       updatedAt: new Date(),
     });
 
-    logger.error(`[✘] A2U payment failed for ${sellerPiUid}: ${err.message}`);
+    logger.error(`[✘] A2U payment failed for ${receiverPiUid}: ${err.message}`);
     if (!willRetry) {
       logger.info(`[⚠️] Job permanently failed after ${attempts} attempts.`);
     }
