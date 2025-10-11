@@ -54,7 +54,7 @@ export const completeServerPayment = async (serverPayments: PaymentDTO[]): Promi
           $set: {
             a2u_payment_id: piPaymentId,
             a2u_completed_at: new Date(),
-            status: OrderStatusEnum.Completed,
+            status: OrderStatusEnum.Released,
           }
         }
       ).lean()
@@ -124,7 +124,7 @@ export const createA2UPayment = async (a2uPaymentData: A2UPaymentDataType): Prom
           $set: {
             a2u_payment_id: paymentId,
             a2u_completed_at: new Date(),
-            status: OrderStatusEnum.Completed,
+            status: OrderStatusEnum.Released,
           }
         }
       ).lean()
