@@ -24,7 +24,9 @@ export const connectDB = async () => {
 
     const conn = await mongoose.connect(env.MONGODB_URL, {
       minPoolSize: env.MONGODB_MIN_POOL_SIZE,
-      maxPoolSize: env.MONGODB_MAX_POOL_SIZE
+      maxPoolSize: env.MONGODB_MAX_POOL_SIZE,
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
     });
     cached.conn = conn;
     logger.info("✅ [connectDB] MongoDB connected successfully");
