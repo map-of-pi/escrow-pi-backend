@@ -15,7 +15,7 @@ jobs:
   merge:
     name: 🔀 Merge
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'dev' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     # The sequence of tasks that will be executed as part of the job
     steps:
@@ -35,7 +35,7 @@ jobs:
             echo "No merge needed for branch ${{ github.event.workflow_run.head_branch }}"
             exit 0
           fi
-
+          
       - name: Merge dev to staging
         uses: repo-sync/pull-request@v2
         with:
