@@ -22,12 +22,7 @@ export const connectDB = async () => {
     // Log Mongoose connection state before attempting connection
     console.log(`🟢 [connectDB] Mongoose connection state BEFORE connect(): ${mongoose.connection.readyState}`);
 
-    const conn = await mongoose.connect(env.MONGODB_URL, {
-      minPoolSize: env.MONGODB_MIN_POOL_SIZE,
-      maxPoolSize: env.MONGODB_MAX_POOL_SIZE,
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
-    });
+    const conn = await mongoose.connect(env.MONGODB_URL);
     cached.conn = conn;
     logger.info("✅ [connectDB] MongoDB connected successfully");
 
