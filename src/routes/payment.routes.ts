@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { 
+  a2uPaymentJobTrigger,
   onIncompletePaymentFound, 
   onPaymentApproval, 
   onPaymentCancellation, 
@@ -15,5 +16,6 @@ paymentsRouter.post("/complete", onPaymentCompletion);
 paymentsRouter.post("/approve", verifyToken, onPaymentApproval);
 paymentsRouter.post("/cancelled-payment", onPaymentCancellation);
 paymentsRouter.post("/error", onPaymentError);
+paymentsRouter.get("/a2u-job", a2uPaymentJobTrigger);
 
 export default paymentsRouter;
