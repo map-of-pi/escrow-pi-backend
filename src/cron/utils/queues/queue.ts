@@ -56,6 +56,7 @@ export const enqueuePayment = async (
   orderId: string,
   memo:string
 ) => {
+  logger.info('start enqueue payment')
   try {
     const order = await Order.findById(orderId).exec() as OrderType;
     // check if seller gas saver is on
@@ -82,7 +83,8 @@ export const enqueuePayment = async (
     logger.info("new payment added to queue for order with ID: ", {orderId})
     return;
 
-  }catch(error:any){
-
+  } catch (error:any) {
+    logger.error('error while adding A2U payment to queue', {error});
+    throw new Error(`error while adding A2U payment to queue ${error}`);
   }
 }
