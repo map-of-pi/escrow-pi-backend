@@ -1,8 +1,7 @@
-import { ClientSession } from "mongoose";
 import logger from "../config/loggingConfig";
 import { nextOrderNo } from "../helpers/getNextOrderNo";
-import { Comment, CommenType } from "../models/Comment";
-import { Order, OrderType } from "../models/Order";
+import { Comment } from "../models/Comment";
+import { Order } from "../models/Order";
 import { IUser } from "../types";
 import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
 import { addComment } from "./comment.service";
