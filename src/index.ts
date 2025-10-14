@@ -5,7 +5,6 @@ import logger from "./config/loggingConfig";
 import "./config/sentryConnection";
 import app from "./utils/app";
 import { env } from "./utils/env";
-import { scheduleCronJobs } from "./cron";
 
 dotenv.config();
 
@@ -43,7 +42,5 @@ const startServer = async () => {
 
 // Start the server setup process
 startServer();
-// TODO: Remove cron job; Start the scheduled cron job(s)
-scheduleCronJobs();
 
 export default app;
