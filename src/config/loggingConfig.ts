@@ -27,7 +27,7 @@ const logWarn = (message: string, context?: Record<string, any>) => {
     // Convert warning to a message with level "warning"
     Sentry.captureMessage(message, "warning");
   }
-  sendDiscordNotification("⚠️ Warning Logged", message, "warning");
+  // sendDiscordNotification("⚠️ Warning Logged", message, "warning");
 };
 
 const logError = (error: Error | string, context?: Record<string, any>) => {
