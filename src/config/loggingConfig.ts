@@ -1,5 +1,6 @@
 import winston from "winston";
 import { Sentry, isSentryEnabled } from "../config/sentryConnection";
+import { sendDiscordNotification } from "../utils/discord";
 
 // Winston logger for local logs
 const logger = winston.createLogger({
@@ -17,6 +18,7 @@ const logger = winston.createLogger({
 // Wrapper functions
 const logInfo = (message: string, context?: Record<string, any>) => {
   logger.info(message, context);
+  // sendDiscordNotification("💡 Info Logged", message, "info");
 };
 
 const logWarn = (message: string, context?: Record<string, any>) => {
@@ -25,20 +27,20 @@ const logWarn = (message: string, context?: Record<string, any>) => {
     // Convert warning to a message with level "warning"
     Sentry.captureMessage(message, "warning");
   }
+  sendDiscordNotification("⚠️ Warning Logged", message, "warning");
 };
 
 const logError = (error: Error | string, context?: Record<string, any>) => {
-  if (typeof error === "string") {
-    // logger.error(error, context);
-    if (isSentryEnabled) {
+  const message = typeof error === "string" ? error : error.message;
+  
+  if (isSentryEnabled) {
+    if (typeof error === "string") {
       Sentry.captureMessage(error, "error");
-    }
-  } else {
-    // logger.error(error.message, { stack: error.stack, ...context });
-    if (isSentryEnabled) {
+    } else {
       Sentry.captureException(error);
     }
   }
+  sendDiscordNotification("❌ Error Logged", message, "error");
 };
 
 export { logInfo, logWarn, logError };
