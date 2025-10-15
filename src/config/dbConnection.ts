@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import logger from "./loggingConfig";
+import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import { env } from "../utils/env";
 
 // Retry configuration
@@ -22,38 +22,27 @@ function sleep(ms: number) {
 
 export const connectDB = async (): Promise<typeof mongoose> => {
   if (cached.conn) {
-    logger.info("✅ [connectDB] Using cached MongoDB connection");
-    console.log("✅ [connectDB] Using cached MongoDB connection");
+    logInfo("Using cached MongoDB connection.");
     return cached.conn;
   }
 
   if (cached.promise) {
-    logger.info("⏳ [connectDB] Awaiting existing MongoDB connection promise");
+    logInfo("MongoDB connection in progress, awaiting existing promise.");
     return cached.promise;
   }
-  
-  console.log("🟢 [connectDB] Starting MongoDB connection process...");
-  // Only log the MongoDB URL in non-production environments
-  if (env.NODE_ENV === 'development') {
-    logger.info(`Connecting to MongoDB with URL: ${env.MONGODB_URL}`);
-    console.log(`🟢 [connectDB] MongoDB URL: ${env.MONGODB_URL}`);
-  }
 
-  // Log Mongoose connection state before attempting connection
-  console.log(`🟢 [connectDB] Mongoose connection state BEFORE connect(): ${mongoose.connection.readyState}`);
-
-  // ✅ Set global buffering timeout before connecting
+  // Set global buffering timeout before connecting
   mongoose.set("bufferTimeoutMS", 60000);
 
   let attempt = 0;
   let conn: typeof mongoose;
+
+  logInfo("Attempting to connect to MongoDB..");
   
   while (attempt < MAX_RETRIES) {
     attempt++;
 
     try {
-      console.log(`🟢 [connectDB] Attempt ${attempt} to connect to MongoDB...`);
-
       conn = await mongoose.connect(env.MONGODB_URL, {
         minPoolSize: env.MONGODB_MIN_POOL_SIZE,
         maxPoolSize: env.MONGODB_MAX_POOL_SIZE,
@@ -63,55 +52,38 @@ export const connectDB = async (): Promise<typeof mongoose> => {
 
       cached.conn = conn;
       cached.promise = null;
-
-      console.log("✅ [connectDB] MongoDB connected successfully");
-      logger.info("✅ [connectDB] MongoDB connected successfully");
-
-      // Log connection state after connect
-      console.log(`✅ [connectDB] Mongoose connection state AFTER connect(): ${mongoose.connection.readyState}`);
-      logger.info("Successful connection to MongoDB.");
-      
+      logInfo(`MongoDB connected successfully on attempt #${attempt}.`);
       break;
-    } catch (error: any) {
-      logger.error('Failed connection to MongoDB:', error);
-      console.error("❌ [connectDB] Failed to connect to MongoDB:", error);
-      console.error(`❌ [connectDB] Connection attempt ${attempt} failed:`, error);
-
+    } catch (err: any) {
       if (attempt < MAX_RETRIES) {
         const delay = Math.min(RETRY_DELAY_MS * Math.pow(2, attempt), 30000);
-        console.log(`⏳ [connectDB] Retrying in ${delay / 1000}s...`);
+        logWarn(`MongoDB connection attempt #${attempt} failed. Retrying in ${delay}ms..`);
         await sleep(delay);
       } else {
-        console.error("🚨 [connectDB] All retry attempts failed.");
-        logger.error("🚨 [connectDB] All retry attempts failed.");
-        throw error;
+        logError(`MongoDB connection failed after #${attempt} attempts: ${err.message}`);
+        throw err;
       }
     }
   }
 
   // Add event listeners only once (avoid duplicate listeners in serverless)
   if (mongoose.connection.listenerCount("connected") === 0) {
-    mongoose.connection.on("connected", () => {
-      console.log("✅ [connectDB] Mongoose connected event fired");
-    });
-    mongoose.connection.on("error", (err) => {
-      console.error("❌ [connectDB] Mongoose connection error event fired:", err);
-    });
+    mongoose.connection.on("connected", () => logInfo("MongoDB connection established."));
     mongoose.connection.on("disconnected", async () => {
-      console.warn("⚠️ [connectDB] Mongoose disconnected event fired");
+      logWarn("MongoDB disconnected. Attempting to reconnect..");
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-          console.log(`🔄 [connectDB] Reconnecting attempt ${attempt}...`);
           await mongoose.connect(env.MONGODB_URL);
-          console.log("✅ [connectDB] Reconnected to MongoDB successfully");
+          logInfo("MongoDB reconnected successfully.");
           return;
-        } catch (reconnectErr) {
-          console.error(`❌ [connectDB] Reconnect attempt ${attempt} failed`, reconnectErr);
+        } catch (err: any) {
+          logWarn(`Reconnection attempt #${attempt} failed: ${err.message}`);
           await sleep(RETRY_DELAY_MS * attempt);
         }
       }
-      console.error("🚨 [connectDB] Failed to reconnect after multiple attempts.");
+      logError("Failed to reconnect to MongoDB after multiple attempts.");
     });
+    mongoose.connection.on("error", (err) => logError(`MongoDB error: ${err.message}`));
   }
 
   return conn!;

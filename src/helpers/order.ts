@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import crypto from "crypto";
+import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import { OrderCounter } from "../models/Counter";
-import logger from "../config/loggingConfig";
 
 /**
  * Generate a short, unique, human-readable order number.
@@ -22,24 +22,31 @@ function generateShortCode(length = 8): string {
  * Example output: ORD-25YH9Q8T
  */
 export async function nextOrderNo(session?: mongoose.ClientSession) {
-  const now = new Date();
-  const yearSuffix = now.getFullYear().toString().slice(-2);
-  const dayOfYear = Math.floor(
-    (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000
-  )
-    .toString()
-    .padStart(3, "0"); // e.g. 286th day
+  try {
+    const now = new Date();
+    const yearSuffix = now.getFullYear().toString().slice(-2);
+    const dayOfYear = Math.floor(
+      (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000
+    )
+      .toString()
+      .padStart(3, "0"); // e.g. 286th day
 
-  const shortCode = generateShortCode(6);
-  const orderNo = `ORD-${yearSuffix}${dayOfYear}${shortCode}`;
+    const shortCode = generateShortCode(6);
+    const orderNo = `ORD-${yearSuffix}${dayOfYear}${shortCode}`;
 
-  // Optional: maintain sequence per day if you need audit or strict ordering
-  await OrderCounter.findOneAndUpdate(
-    { key: `order:${now.toISOString().slice(0, 10)}` },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true, session }
-  );
+    // Optional: maintain sequence per day if you need audit or strict ordering
+    await OrderCounter.findOneAndUpdate(
+      { key: `order:${now.toISOString().slice(0, 10)}` },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true, session }
+    );
 
-  logger.info(`Generated new order number: ${orderNo}`);
-  return orderNo;
+    logInfo(`Generated new order number: ${orderNo}`);
+    return orderNo;
+  } catch (err: any) {
+    logError(`❌ Failed to generate new order number: ${err.message}`, {
+      stack: err.stack,
+    });
+    throw err;
+  }
 };

@@ -1,14 +1,15 @@
+import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import Notification from "../models/Notification";
 import { INotification } from "../types";
-import logger from "../config/loggingConfig";
 
 export const addNotification = async (pi_uid: string, reason: string): Promise<INotification> => {
   try {
     const notification = await Notification.create({ pi_uid, reason, is_cleared: false });
+    logInfo(`Notification created for user: ${pi_uid} | Reason: ${reason}`);
     return notification as INotification;
-  } catch (error: any) {
-    logger.error(`Failed to add notification for piUID ${pi_uid}: ${error.message}`);
-    throw error;
+  } catch (err: any) {
+    logError(`Failed to create notification for user: ${pi_uid}`, err);
+    throw err;
   }
 };
 
@@ -33,10 +34,11 @@ export const getNotifications = async (
       .limit(limit)
       .exec();
 
+    logInfo(`Fetched ${notifications.length} notification(s) for user: ${pi_uid} | Status: ${status ?? "all"}`);  
     return notifications as INotification[];
-  } catch (error: any) {
-    logger.error(`Failed to get notifications for piUID ${pi_uid}: ${error.message}`);
-    throw error;
+  } catch (err: any) {
+    logError(`Failed to fetch notifications for user: ${pi_uid}`, err);
+    throw err;
   }
 };
 
@@ -45,6 +47,7 @@ export const toggleNotificationStatus = async (notification_id: string): Promise
     const notification = await Notification.findById(notification_id).exec();
 
     if (!notification) {
+      logWarn(`Notification not found for ${notification_id}`);
       return null;
     }
 
@@ -54,9 +57,10 @@ export const toggleNotificationStatus = async (notification_id: string): Promise
       { new: true }
     ).exec();
 
+    // logInfo(`Notification ${notification_id} status toggled to: ${!notification.is_cleared}`);
     return updatedNotification as INotification;
-  } catch (error: any) {
-    logger.error(`Failed to toggle notification status for ID ${notification_id}: ${error.message}`);
-    throw error;
+  } catch (err: any) {
+    logError(`Failed to toggle notification for ${notification_id}`, err);
+    throw err;
   }
 };

@@ -1,39 +1,46 @@
 import { Request, Response } from "express";
 import { addComment, getOrderComments } from "../services/comment.service";
-import logger from "../config/loggingConfig";
+import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import { IUser } from "../types";
 
 export const addNewComment = async (req: Request, res: Response) => {
   try {
     const authUser = req.currentUser as IUser
-    // logger.info(`Processing order info: ${JSON.stringify(req.body)}`);
     const { order_no, description } = req.body;
     if (!order_no || !description.trim()) {
-      logger.warn('Missing required fields in order creation request');
+      logWarn("Missing required fields (order_no or description).");
       return res.status(400).json({ message: "Missing required fields" });
     } 
     
-    // Assume createOrderSecure is a function that creates an order securely
     const newComment = await addComment( order_no, description, authUser.pi_username );
-    logger.info(`Comment created successfull:`);
-
+    logInfo(`Comment added successfully for order ${order_no} by ${authUser.pi_username}`);
     return res.status(200).json(newComment);
-  } catch (error) {
-    logger.error("Controller Error creating comment:", {error});
-    return res.status(500).json({ message: "Internal server error", error });
+  } catch (err: any) {
+    logError(`Error adding comment: ${err.message}`);
+    return res.status(500).json({ message: 'An error occurred while adding new comment; please try again later' });
   }
 };
 
 export const fetchOrderComment = async (req: Request, res: Response) => {
-  try {
-    const {order_no} = req.params
+  const {order_no} = req.params;
 
+  if (!order_no) {
+    logWarn("Missing order_no parameter.");
+    return res.status(400).json({ message: "Missing order number" });
+  }
+
+  try {
     const comments = await getOrderComments(order_no);
-    logger.info(`${comments.length} Cooments fetched successfully for order: ${order_no}`);
+
+    if (!comments || comments.length === 0) {
+      logWarn(`No comments found for order #${order_no}`);
+    } else {
+      logInfo(`Retrieved ${comments.length} comment(s) for order #${order_no}`);
+    }
 
     return res.status(200).json(comments);
-  } catch (error) {
-    logger.error("Controller Error fetching all user's orders:", {error});
-    return res.status(500).json({ message: "Internal server error", error });
+  } catch (err: any) {
+    logError(`Error fetching comments for order #${order_no}: ${err.message}`);
+    return res.status(500).json({ message: 'An error occurred while fetching order comments; please try again later' });
   }
 };

@@ -6,6 +6,7 @@ dotenv.config();
 export const env = {
   PORT: process.env.PORT || 8001,
   NODE_ENV: process.env.NODE_ENV || 'development',
+  PI_ENV: process.env.PI_ENV,
   JWT_SECRET: process.env.JWT_SECRET || 'default_secret',
   PI_API_KEY: process.env.PI_API_KEY || '',
   PLATFORM_API_URL: process.env.PLATFORM_API_URL || '',
@@ -17,6 +18,7 @@ export const env = {
   MONGODB_MIN_POOL_SIZE: Number(process.env.MONGODB_MIN_POOL_SIZE) || 1,
   MONGODB_MAX_POOL_SIZE: Number(process.env.MONGODB_MAX_POOL_SIZE) || 5,
   SENTRY_DSN: process.env.SENTRY_DSN || '',
+  DISCORD_WEBHOOK: process.env.DISCORD_WEBHOOK || '',
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
