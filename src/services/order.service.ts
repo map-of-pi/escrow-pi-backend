@@ -1,11 +1,11 @@
 import { ClientSession } from "mongoose";
-import logger from "../config/loggingConfig";
-import { nextOrderNo } from "../helpers/getNextOrderNo";
-import { Comment, CommenType } from "../models/Comment";
-import { Order, OrderType } from "../models/Order";
-import { IUser } from "../types";
-import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
 import { addComment } from "./comment.service";
+import { logInfo, logWarn, logError } from "../config/loggingConfig";
+import { nextOrderNo } from "../helpers/order";
+import { Comment } from "../models/Comment";
+import { Order } from "../models/Order";
+import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
+import { IUser } from "../types";
 
 function buildStatusComment(
   username: string | undefined,
@@ -46,14 +46,17 @@ export async function createOrderSecure(
   payload: { sender: IUser; receiver: IUser; amount: number; authUser: IUser; comment?: string },
   maxRetries = 3
 ): Promise<string> {
-  logger.info(`Starting secure order creation for`);
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const session = await Order.startSession();
     try {
       session.startTransaction();
+      logInfo(`Starting new order creation (Attempt ${attempt}/${maxRetries})`, {
+        sender: payload.sender.pi_username,
+        receiver: payload.receiver.pi_username,
+        amount: payload.amount,
+      });
 
       const orderNo = await nextOrderNo(session);
-      logger.info(`Attempt ${attempt}: Generated order number ${orderNo}`);
 
       // ✅ explicitly create doc instance
       const newOrder = new Order({
@@ -77,24 +80,28 @@ export async function createOrderSecure(
           payload.authUser.pi_username,  
           session
         );
-        logger.info(`Added comment to order ${order.order_no}`);
       }
 
       await session.commitTransaction();
       session.endSession();
 
+      logInfo(`✅ Order successfully created`, { order_no: order.order_no });
       return order.order_no;
 
     } catch (err: any) {
       await session.abortTransaction().catch(() => {});
       session.endSession();
 
-      if (err?.code === 11000 && attempt < maxRetries) continue;
+      if (err?.code === 11000 && attempt < maxRetries) {
+        logWarn("⚠️ Duplicate key detected, retrying order creation..", { attempt });
+        continue;
+      }
+      logError("❌ Error creating order", { error: err.message });
       throw err;
     }
   }
 
-  throw new Error("Failed to create order service after retries");
+  throw new Error("Failed to create order after multiple retries");
 }
 
 function resolveNextStatus(prevStatus: OrderStatusEnum, incomingStatus: OrderStatusEnum): OrderStatusEnum {
@@ -116,7 +123,7 @@ export const updateOrder = async (
   let newComment = null;
 
   try {
-    logger.info("🔄 Processing order update", {
+    logInfo("🔄 Processing order update", {
       order_no,
       requestedStatus,
       user: authUser?.pi_username,
@@ -125,7 +132,7 @@ export const updateOrder = async (
     // 1️⃣ Fetch current order
     const currentOrder = await Order.findOne({ order_no });
     if (!currentOrder) {
-      logger.warn("⚠️ Order not found", { order_no });
+      logError(`Order with order_no #${ order_no } is not found`);
       throw new Error("Order not found");
     }
 
@@ -153,7 +160,7 @@ export const updateOrder = async (
       );
     }
 
-    logger.info(`✅ Order ${order_no} updated successfully`, {
+    logInfo(`✅ Order ${order_no} updated successfully`, {
       prevStatus: currentOrder.status,
       newStatus: nextStatus,
     });
@@ -161,19 +168,21 @@ export const updateOrder = async (
     // 7️⃣ Return combined result
     return { order: updatedOrder.toObject(), comment: newComment };
 
-  } catch (error: any) {
-    logger.error("❌ Error updating order", {
+  } catch (err: any) {
+    logError("❌ Error updating order", {
       order_no,
       requestedStatus,
-      error: error.message,
+      error: err.message,
     });
-    throw new Error(`Error updating order: ${error.message}`);
+    throw new Error(`Error updating order: ${err.message}`);
   }
 };
 
 
 export const getUserOrders = async (authUser:IUser) => {
   try {
+    logInfo("Fetching user orders", { user: authUser.pi_username });
+
     const updatedOrder = await Order.find({
       $or: [{ sender_id: authUser._id }, { receiver_id: authUser._id }]
     })
@@ -182,19 +191,22 @@ export const getUserOrders = async (authUser:IUser) => {
       .lean();
 
     return updatedOrder;
-  } catch (error:any) {
+  } catch (err: any) {
+    logError("❌ Service error getting user orders", { error: err.message });
     throw new Error('Service error getting user orders')
   }
-}
+};
 
 export const getUserSingleOrder = async (order_no: string) => {
   try {
+    logInfo("Fetching order details", { order_no });
     // 🔹 Find the order by order_no
     const order = await Order.findOne({ order_no })
       .select("-sender_id -receiver_id -u2a_payment_id -a2u_payment_id -_id")
       .lean();
 
     if (!order) {
+      logError(`Order with order_no #${ order_no } is not found`);
       throw new Error("Order not found");
     }
 
@@ -206,8 +218,8 @@ export const getUserSingleOrder = async (order_no: string) => {
 
     // 🔹 Attach comments to the order object
     return { order: {...order}, comments };
-  } catch (error: any) {
-    logger.error("Error fetching user single order:", error);
+  } catch (err: any) {
+    logError("❌ Service error getting user single order", { error: err.message });
     throw new Error("Service error getting user single order");
   }
 };

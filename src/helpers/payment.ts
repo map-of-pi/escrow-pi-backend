@@ -1,22 +1,22 @@
 import axios from 'axios';
+import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import { platformAPIClient } from '../config/platformAPIclient';
-import logger from '../config/loggingConfig';
-import { IUser, PaymentDTO, PaymentInfo, U2AMetadata } from '../types';
-import { updateOrder } from '../services/order.service';
 import { OrderStatusEnum } from '../models/enums/orderStatusEnum';
+import { updateOrder } from '../services/order.service';
 import { getUser, validateUsername } from '../services/user.service';
-import { enqueuePayment } from '../cron/utils/queues/queue';
+import { IUser, PaymentDTO, PaymentInfo, U2AMetadata } from '../types';
+import { enqueuePayment } from '../cron/utils/queue';
 
 const logPlatformApiError = (error: any, context: string) => {
   if (error.response) {
-    logger.error(`${context} - platformAPIClient error`, {
+    logError(`${context} - platformAPIClient error`, {
       url: error.config?.url,
       method: error.config?.method,
       status: error.response.status,
       data: error.response.data,
     });
   } else {
-    logger.error(`${context} - Unhandled error`, {
+    logError(`${context} - Unhandled error`, {
       message: error.message,
       stack: error.stack,
     });
@@ -32,15 +32,22 @@ const completePiPayment = async (piPaymentId: string, txid: string) => {
   const metadata = currentPayment.metadata;
 
   if (!txid) {
-    logger.warn("No transaction ID");
-    throw new Error("No transaction ID");
+    logWarn(`No transaction ID provided for payment ${piPaymentId}`);
+    throw new Error("No transaction ID provided");
   }
   
   // Mark the payment as completed
-  logger.info("Payment record marked as completed");
+  logInfo(`Marking payment ${piPaymentId} as completed`);
   const today = new Date()
   const authUser = await getUser(currentPayment.user_uid) as IUser;
-  const updatedOrder = await updateOrder(metadata.order_no, OrderStatusEnum.Paid, authUser, currentPayment.identifier, today);
+  
+  const updatedOrder = await updateOrder(
+    metadata.order_no, 
+    OrderStatusEnum.Paid, 
+    authUser, 
+    currentPayment.identifier, 
+    today
+  );
 
   // Enqueue the payment for further processing (e.g., A2U payment)
   await enqueuePayment(
@@ -51,11 +58,11 @@ const completePiPayment = async (piPaymentId: string, txid: string) => {
   // Notify Pi Platform of successful completion
   const completedPiPayment = await platformAPIClient.post(`/v2/payments/${ piPaymentId }/complete`, { txid });      
   if (completedPiPayment.status !== 200) {
-    logger.error("Failed to mark U2A payment completed on Pi blockchain")
+    logError(`Failed to mark U2A payment ${piPaymentId} as completed on Pi blockchain`);
     throw new Error("Failed to mark U2A payment completed on Pi blockchain");
   }
 
-  logger.info("Payment marked completed on Pi blockchain", completedPiPayment.status);
+  logInfo(`Payment ${piPaymentId} marked completed on Pi blockchain`);
   return completedPiPayment;
 };
 
@@ -68,13 +75,18 @@ export const processIncompletePayment = async (payment: PaymentInfo) => {
     const txid = payment.transaction?.txid;
     const txURL = payment.transaction?._link;
 
+    if (!txURL) {
+      logWarn(`No blockchain link found for incomplete payment ${piPaymentId}`);
+      throw new Error("No blockchain link found for payment");
+    }
+
     // Retrieve the original (incomplete) payment record by its identifier
     // const incompletePayment = await getPayment(piPaymentId);
 
     // Fetch the payment memo from the Pi Blockchain via Horizon API
     const horizonResponse = await axios.create({ timeout: 20000 }).get(txURL!);
     const blockchainMemo = horizonResponse.data.memo;
-    logger.info("paymentIdOnBlock: ", blockchainMemo);
+    logInfo(`Retrieved blockchain memo for payment ${piPaymentId} | ${blockchainMemo}`);
 
     // Validate that the memo from the blockchain matches the expected payment ID
     // if (blockchainMemo !== incompletePayment.pi_payment_id) {
@@ -85,11 +97,11 @@ export const processIncompletePayment = async (payment: PaymentInfo) => {
 
     return {
       success: true,
-      message: `Payment completed from incomplete payment with id ${ piPaymentId }`,
+      message: `Payment completed from incomplete payment with ID: ${ piPaymentId }`,
     };
-  } catch (error: any) {
-    logPlatformApiError(error, "processIncompletePayment");
-    throw(error);
+  } catch (err: any) {
+    logPlatformApiError(err, "processIncompletePayment");
+    throw err;
   }
 };
 
@@ -106,18 +118,18 @@ export const processPaymentApproval = async (
     const metadata = currentPayment.metadata;
 
     await updateOrder(metadata.order_no, OrderStatusEnum.Initiated, undefined, currentPayment.identifier);
-    logger.info("payment approved from backend with metadata: ", {metadata})
+    logInfo(`Payment ${paymentId} approved on backend with metadata`, { metadata });
 
     // Approve the payment on the Pi platform
     await platformAPIClient.post(`/v2/payments/${ currentPayment.identifier }/approve`);
 
     return {
       success: true,
-      message: `Payment approved with id ${ currentPayment.identifier }`,
+      message: `Payment approved with ID: ${ currentPayment.identifier }`,
     };
-  } catch (error: any) {
-    logPlatformApiError(error, "processPaymentApproval");
-    throw(error);
+  } catch (err: any) {
+    logPlatformApiError(err, "processPaymentApproval");
+    throw err;
   }
 };
 
@@ -133,11 +145,11 @@ export const processPaymentCompletion = async (
     await completePiPayment(paymentId, txid);
     return {
       success: true,
-      message: `U2A Payment completed with id ${ paymentId }`,
+      message: `U2A Payment completed with ID: ${ paymentId }`,
     };
-  } catch (error: any) {
-    logPlatformApiError(error, "processPaymentCompletion");
-    throw(error);
+  } catch (err: any) {
+    logPlatformApiError(err, "processPaymentCompletion");
+    throw err;
   }
 }; 
 
@@ -147,19 +159,19 @@ export const processPaymentCompletion = async (
 export const processPaymentCancellation = async (paymentId: string) => {
   try {
     // Mark the payment as cancelled
-    logger.info('Order record updated to cancelled');
+    logInfo(`Marking payment ${paymentId} as cancelled`);
 
     // Notify the Pi platform that the payment has been cancelled
     await platformAPIClient.post(`/v2/payments/${ paymentId }/cancel`);
-    logger.info('Successfully posted cancellation to Pi platform');
+    logInfo(`Successfully posted cancellation to Pi platform for payment ${paymentId}`);
 
     return {
       success: true,
       message: `Payment cancelled with id ${ paymentId }`,
     };
-  } catch (error: any) {
-    logPlatformApiError(error, "processPaymentCancellation");
-    throw(error);
+  } catch (err: any) {
+    logPlatformApiError(err, "processPaymentCancellation");
+    throw err;
   }
 };
 
@@ -186,15 +198,15 @@ export const processPaymentError = async (paymentDTO: PaymentDTO) => {
         message: `Payment Error with ID ${paymentId} handled and completed successfully`,
       };
     } else {
-      logger.warn("No transaction data found for existing payment");
+      logWarn(`No transaction data for payment ${paymentId}; cancelling payment`);
       await processPaymentCancellation(paymentId);
       return {
         success: true,
         message: `Payment Error with ID ${paymentId} cancelled successfully`,
       };
     }
-  } catch (error: any) {
-    logPlatformApiError(error, "processPaymentError");
-    throw(error);
+  } catch (err: any) {
+    logPlatformApiError(err, "processPaymentError");
+    throw err;
   }
 };

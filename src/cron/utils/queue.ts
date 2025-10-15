@@ -1,9 +1,8 @@
-
-import logger from "../../../config/loggingConfig";
-import { Order, OrderType } from "../../../models/Order";
-import A2UPaymentQueue from "../../../models/A2UPaymentQueue";
-import User from "../../../models/User";
-import { IUser } from "../../../types";
+import { logInfo, logError } from "../../config/loggingConfig";
+import { Order, OrderType } from "../../models/Order";
+import A2UPaymentQueue from "../../models/A2UPaymentQueue";
+import User from "../../models/User";
+import { IUser } from "../../types";
 
 const GAS_FEE = 0.01;
 
@@ -13,6 +12,7 @@ const batchSellerRevenue = async (
   senderPiUid: string,
   amount: string,
 ): Promise<void> => {
+  logInfo(`[→] Starting batchSellerRevenue for seller: ${receiverPiUid} w/ order: ${orderId}`);
   try {
     const onQueuePayment = await A2UPaymentQueue.findOne({ receiverPiUid, status:"batching", last_a2u_date: null }).exec();
     if (!onQueuePayment) {
@@ -25,7 +25,7 @@ const batchSellerRevenue = async (
         status: "batching",
         memo: "Escrow Pi Payment for Order",
       });
-      logger.info("new payment added to queue for seller with ID: ", receiverPiUid)
+      logInfo(`[✔] New payment added to queue for seller: ${receiverPiUid}`);
       return;
     }
 
@@ -39,36 +39,29 @@ const batchSellerRevenue = async (
     ).exec();
    
     if (!updatedQueue) {
-      logger.error(`Failed to update payment queue for seller: ${receiverPiUid}`);
+      logError(`[✘] Failed to update payment queue for seller: ${receiverPiUid}`);
       throw new Error(`Failed to update payment queue for seller: ${receiverPiUid}`);
     }
 
-    logger.info(`Updated payment queue for seller: ${receiverPiUid}, new amount: ${updatedQueue.amount}`);
-    return
+    logInfo(`[✔] Updated payment queue for seller: ${receiverPiUid} w/ new amount: ${updatedQueue.amount}`);
+    return;
 
-  } catch (error:any) {
-    logger.error("failed to enque payment")
+  } catch (err: any) {
+    logError(`[✘] Failed to enqueue batch payment for seller ${receiverPiUid}: ${err.message}`);
   }
-
-}
+};
 
 export const enqueuePayment = async (
   orderId: string,
   memo:string
-) => {
+): Promise<void> => {
+  logInfo(`[→] Starting enqueuePayment for order: ${orderId}`);
   try {
     const order = await Order.findById(orderId).exec() as OrderType;
     // check if seller gas saver is on
     const receiver = await User.findById( order.receiver_id ).lean().exec() as IUser;
     const sender = await User.findById( order.sender_id ).lean().exec() as IUser;
-    const amount = order.amount
-    
-    // // check and compute seller revenue for gas saver
-    // if (seller?.gas_saver) {
-    //   batchSellerRevenue(xRefId, seller.seller_id, amount);
-    //   return
-    // }
-    
+    const amount = order.amount;   
     const newAmount = amount - GAS_FEE;
 
     await A2UPaymentQueue.create({
@@ -79,10 +72,11 @@ export const enqueuePayment = async (
       status: "pending",
       memo: memo,
     });
-    logger.info("new payment added to queue for order with ID: ", {orderId})
+    logInfo(`[✔] New payment added to queue for order: ${orderId} | receiver: ${receiver.pi_uid}`);
     return;
 
-  }catch(error:any){
-
+  } catch (err: any) {
+    logError(`[✘] enqueuePayment failed for order ${orderId}: ${err.message}`);
+    throw new Error(`Error while adding A2U payment to queue ${err}`);
   }
-}
+};

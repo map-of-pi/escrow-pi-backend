@@ -30,9 +30,10 @@ export interface U2AMetadata {
 }
 
 export interface A2UMetadata { 
-  orderId: string; 
-  sellerId: string; 
-  buyerId: string 
+  direction: string, 
+  receiverPiUid: string,
+  senderPiUid: string, 
+  orderIds:string[] 
 };
 
 export interface PaymentInfo {
@@ -44,6 +45,7 @@ export interface PaymentInfo {
 };
 
 export interface A2UPaymentDataType {
+  piPaymentId?: string,
   senderPiUid: string,
   receiverPiUid: string,
   amount: string,
