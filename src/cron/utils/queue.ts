@@ -1,9 +1,9 @@
 
-import logger from "../../../config/loggingConfig";
-import { Order, OrderType } from "../../../models/Order";
-import A2UPaymentQueue from "../../../models/A2UPaymentQueue";
-import User from "../../../models/User";
-import { IUser } from "../../../types";
+import logger from "../../config/loggingConfig";
+import { Order, OrderType } from "../../models/Order";
+import A2UPaymentQueue from "../../models/A2UPaymentQueue";
+import User from "../../models/User";
+import { IUser } from "../../types";
 
 const GAS_FEE = 0.01;
 
@@ -49,13 +49,13 @@ const batchSellerRevenue = async (
   } catch (error:any) {
     logger.error("failed to enque payment")
   }
-
-}
+};
 
 export const enqueuePayment = async (
   orderId: string,
   memo:string
 ) => {
+  logger.info('start enqueue payment')
   try {
     const order = await Order.findById(orderId).exec() as OrderType;
     // check if seller gas saver is on
@@ -82,7 +82,8 @@ export const enqueuePayment = async (
     logger.info("new payment added to queue for order with ID: ", {orderId})
     return;
 
-  }catch(error:any){
-
+  } catch (error:any) {
+    logger.error('error while adding A2U payment to queue', {error});
+    throw new Error(`error while adding A2U payment to queue ${error}`);
   }
-}
+};

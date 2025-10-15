@@ -1,8 +1,13 @@
 import { Request, Response } from "express";
-import { createOrderSecure, getUserOrders, getUserSingleOrder, updateOrder } from "../services/order.service";
 import logger from "../config/loggingConfig";
-import { IUser } from "../types";
 import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
+import { 
+  createOrderSecure, 
+  getUserOrders, 
+  getUserSingleOrder, 
+  updateOrder 
+} from "../services/order.service";
+import { IUser } from "../types";
 
 export const createOrder = async (req: Request, res: Response) => {
   try {
@@ -36,14 +41,15 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     if (
       !orderNo ||
       !status ||
-      ![
-        OrderStatusEnum.Disputed,
-        OrderStatusEnum.Declined,
-        OrderStatusEnum.Fulfilled
+      [
+        OrderStatusEnum.Requested,
+        OrderStatusEnum.Initiated,
+        OrderStatusEnum.Expired,
+        OrderStatusEnum.Paid
       ].includes(status as OrderStatusEnum)
     ) {
       return res.status(400).json({
-        message: "Invalid status. Only disputed, declined, or fulfilled are allowed.",
+        message: "Invalid status. Only disputed, declined, released or fulfilled are allowed.",
       });
     }
 

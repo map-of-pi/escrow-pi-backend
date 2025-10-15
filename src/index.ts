@@ -5,7 +5,6 @@ import logger from "./config/loggingConfig";
 import "./config/sentryConnection";
 import app from "./utils/app";
 import { env } from "./utils/env";
-import { scheduleCronJobs } from "./cron";
 
 dotenv.config();
 

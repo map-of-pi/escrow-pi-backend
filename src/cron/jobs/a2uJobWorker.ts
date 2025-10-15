@@ -4,6 +4,7 @@ import { createA2UPayment } from "../../services/payment.service";
 
 // workers/mongodbA2UWorker.ts
 async function processNextJob(): Promise<void> {
+  logger.info('starting next job')
   const now = new Date();
   const MAXATTEMPT = 3
 
@@ -33,21 +34,27 @@ async function processNextJob(): Promise<void> {
     }
   );
 
-
-  if (!job) return;
-
+  if (!job) {
+    logger.info('No job is found');
+    return;
+  }
+  logger.info('job details: ', {job});
   const { receiverPiUid, senderPiUid, amount, xRef_ids, _id, attempts, memo, last_a2u_date } = job;
 
   try {
     logger.info(`[→] Attempt ${attempts}/${MAXATTEMPT} for ${receiverPiUid}`);
 
-    await createA2UPayment({
+    const completedpayment = await createA2UPayment({
       receiverPiUid: receiverPiUid,
       amount: amount.toString(),
       memo: memo,
       orderIds: xRef_ids,
       senderPiUid:senderPiUid
     })
+
+    if (!completedpayment) {
+      throw new Error('error creating new A2U payment');
+    }
 
     await A2UPaymentQueue.findByIdAndUpdate(_id, {
       status: 'completed',
