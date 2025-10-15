@@ -20,7 +20,7 @@ const logInfo = (message: string, context?: Record<string, any>) => {
 };
 
 const logWarn = (message: string, context?: Record<string, any>) => {
-  logger.warn(message, context);
+  // logger.warn(message, context);
   if (isSentryEnabled) {
     // Convert warning to a message with level "warning"
     Sentry.captureMessage(message, "warning");
@@ -29,12 +29,12 @@ const logWarn = (message: string, context?: Record<string, any>) => {
 
 const logError = (error: Error | string, context?: Record<string, any>) => {
   if (typeof error === "string") {
-    logger.error(error, context);
+    // logger.error(error, context);
     if (isSentryEnabled) {
       Sentry.captureMessage(error, "error");
     }
   } else {
-    logger.error(error.message, { stack: error.stack, ...context });
+    // logger.error(error.message, { stack: error.stack, ...context });
     if (isSentryEnabled) {
       Sentry.captureException(error);
     }
