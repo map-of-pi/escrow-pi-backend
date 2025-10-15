@@ -36,7 +36,7 @@ async function processNextJob(): Promise<void> {
 
   if (!job) {
     logger.info('No job is found');
-    return
+    return;
   }
   logger.info('job details: ', {job});
   const { receiverPiUid, senderPiUid, amount, xRef_ids, _id, attempts, memo, last_a2u_date } = job;
@@ -53,7 +53,7 @@ async function processNextJob(): Promise<void> {
     })
 
     if (!completedpayment) {
-      throw new Error('error creating new A2U payment')
+      throw new Error('error creating new A2U payment');
     }
 
     await A2UPaymentQueue.findByIdAndUpdate(_id, {

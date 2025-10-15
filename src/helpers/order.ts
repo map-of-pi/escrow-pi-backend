@@ -1,5 +1,3 @@
-// src/helpers/generateOrderNo.ts
-
 import mongoose from "mongoose";
 import crypto from "crypto";
 import { OrderCounter } from "../models/Counter";
@@ -17,7 +15,7 @@ function generateShortCode(length = 8): string {
     result += chars[bytes[i] % chars.length];
   }
   return result;
-}
+};
 
 /**
  * Generates an industry-standard order number (like Stripe/Shopify style)
@@ -44,4 +42,4 @@ export async function nextOrderNo(session?: mongoose.ClientSession) {
 
   logger.info(`Generated new order number: ${orderNo}`);
   return orderNo;
-}
+};

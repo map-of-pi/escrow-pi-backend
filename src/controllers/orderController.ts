@@ -1,8 +1,13 @@
 import { Request, Response } from "express";
-import { createOrderSecure, getUserOrders, getUserSingleOrder, updateOrder } from "../services/order.service";
 import logger from "../config/loggingConfig";
-import { IUser } from "../types";
 import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
+import { 
+  createOrderSecure, 
+  getUserOrders, 
+  getUserSingleOrder, 
+  updateOrder 
+} from "../services/order.service";
+import { IUser } from "../types";
 
 export const createOrder = async (req: Request, res: Response) => {
   try {

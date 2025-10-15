@@ -1,5 +1,5 @@
 import logger from "../config/loggingConfig";
-import { nextOrderNo } from "../helpers/getNextOrderNo";
+import { nextOrderNo } from "../helpers/order";
 import { Comment } from "../models/Comment";
 import { Order } from "../models/Order";
 import { IUser } from "../types";
