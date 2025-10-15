@@ -43,7 +43,5 @@ const startServer = async () => {
 
 // Start the server setup process
 startServer();
-// TODO: Remove cron job; Start the scheduled cron job(s)
-scheduleCronJobs();
 
 export default app;

@@ -44,7 +44,7 @@ async function processNextJob(): Promise<void> {
     await createA2UPayment({
       receiverPiUid: receiverPiUid,
       amount: amount.toString(),
-      memo: "A2U payment",
+      memo: memo,
       orderIds: xRef_ids,
       senderPiUid:senderPiUid
     })
