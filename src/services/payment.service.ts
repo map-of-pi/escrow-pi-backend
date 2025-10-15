@@ -3,7 +3,7 @@ import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import pi from "../config/platformAPIclient";
 import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
 import { Order } from "../models/Order";
-import { A2UPaymentDataType, PaymentDTO } from "../types";
+import { A2UMetadata, A2UPaymentDataType, PaymentDTO } from "../types";
 
 export const getIncompleteServerPayments = async (): Promise<any> => {
   try {
@@ -27,72 +27,37 @@ export const completeServerPayment = async (serverPayments: PaymentDTO[]): Promi
   }
 
   logInfo(`Starting completion for ${serverPayments.length} pending server payment(s)`);
-
+  logInfo("Found incomplete server payments", serverPayments);
   for (const payment of serverPayments) {
-    let transaction = payment.transaction || null;
     const piPaymentId = payment.identifier;
-    const metadata = payment.metadata as { orderId: string; senderId: string; receiverID: string };
+    const txn = payment.transaction;
+    const metadata = payment.metadata as A2UMetadata;
 
-    if (!piPaymentId) {
-      logError(`Missing Pi payment ID for payment: ${JSON.stringify(payment)}`);
-      continue;
-    }
-
-    try {
-      let txid = transaction?.txid;
-
-      // Submit payment if txid not yet assigned
-      if (!txid) {
-        logInfo(`Submitting Pi payment for ID: ${piPaymentId}`);
-        txid = await pi.submitPayment(piPaymentId);
-        if (!txid) {
-          throw new Error(`Failed to submit Pi payment with ID ${piPaymentId}`);
-        }
-        logInfo(`Received txid: ${txid} for Pi payment ${piPaymentId}`);
+    try {      
+      if (!txn) {
+        await pi.cancelPayment(payment.identifier);
       }
 
-      if (!metadata?.orderId) {
-        throw new Error(`Missing order reference for Pi payment ${piPaymentId}`);
-      }
+      await createA2UPayment({
+        piPaymentId: piPaymentId,
+        receiverPiUid: metadata.receiverPiUid,
+        amount: payment.amount.toString(),
+        memo: payment.memo,
+        orderIds: metadata.orderIds,
+        senderPiUid: metadata.senderPiUid
+      })
+      logInfo(`✅ A2U payment process completed for xRef ID: ${metadata.orderIds}`);
 
-      logInfo(`Updating Order ${metadata.orderId} to Released status..`);
-
-      // Mark the payment as completed in your DB
-      const updatedOrder = await Order.findByIdAndUpdate(
-        metadata.orderId, 
-        {
-          $set: {
-            a2u_payment_id: piPaymentId,
-            a2u_completed_at: new Date(),
-            status: OrderStatusEnum.Released,
-          }
-        },
-        { new: true }
-      ).lean()
-      .exec();
-
-      if (!updatedOrder) {
-        throw new Error(`Failed to update order ${metadata.orderId} for Pi payment ${piPaymentId}`);
-      }
-
-      logInfo(`Successfully updated order record for ${metadata.orderId}`);
-
-      logInfo(`Confirming payment on blockchain for Pi Payment ID: ${piPaymentId}`);
-      // Final confirmation with Pi network
-      const completedPiPayment = await pi.completePayment(piPaymentId, txid);
-      if (!completedPiPayment) {
-        throw new Error(`Failed to confirm Pi payment on blockchain for ${piPaymentId}`);
-      }
-
-      logInfo(`✅ A2U payment process completed successfully for Order ${metadata.orderId}`);
     } catch (err: any) {
-      const orderRef = metadata?.orderId || "unknown";
-
       if (axios.isAxiosError(err)) {
-        logError(`Axios error during A2U payment for Order ${orderRef}: ${err.message} (status: ${err.response?.status || "N/A"})`);
+        logError(`Axios error from completeServerPayment xRef ${metadata.orderIds || 'unknown'}: ${err.message}`, {
+          status: err.response?.status,
+          data: err.response?.data,
+        });
       } else {
-        logError(`❌ Error completing server payment for Order ${orderRef}: ${err.message}`);
-      }
+        logError(`❌ Error completing server payment for xRef ID ${metadata.orderIds || 'unknown'}: ${err.message}`);
+      }      
+      return;
     }
   }
 };
@@ -100,30 +65,47 @@ export const completeServerPayment = async (serverPayments: PaymentDTO[]): Promi
 export const createA2UPayment = async (a2uPaymentData: A2UPaymentDataType): Promise<string | null> => {
   const { amount, memo, senderPiUid, receiverPiUid, orderIds } = a2uPaymentData;
   logInfo(`Starting A2U payment creation for receiver UID: ${receiverPiUid} | Orders: ${orderIds.join(", ")}`);
+  
   try {
-    const a2uData = {
-      amount: parseFloat(amount),
-      memo,
-      metadata: { direction: "A2U", senderPiUid, orderIds },
-      uid: receiverPiUid as string,
-    };
-
-    logInfo(`Creating A2U Pi payment with amount ${a2uData.amount} and memo: "${memo}"`);
-    const paymentId = await pi.createPayment(a2uData);
+    let paymentId = a2uPaymentData.piPaymentId
     if (!paymentId) {
-      throw new Error('Failed to create A2U Pi payment');
+      const a2uData = {
+        amount: parseFloat(amount),
+        memo,
+        metadata: { 
+          direction: "A2U", 
+          receiverPiUid,
+          senderPiUid, 
+          orderIds
+        },
+        uid: receiverPiUid as string,
+      };
+
+      logInfo(`Creating A2U Pi payment with amount ${a2uData.amount} and memo: "${memo}"`);
+      paymentId = await pi.createPayment(a2uData);
+      if (!paymentId) {
+        logError(`Failed to create A2U Pi payment for UID ${ receiverPiUid }`);
+        throw new Error('Failed to create A2U Pi payment');
+      }
     }
     
     logInfo(`A2U Pi payment created with Payment ID: ${paymentId}. Submitting to blockchain..`);
     /* Step 5: Submit the Pi payment to finalize the blockchain transaction */
     const txid = await pi.submitPayment(paymentId);
     if (!txid) {
+      logError(`Failed to submit A2U Pi payment with Payment ID ${ paymentId }`);
       throw new Error('Failed to submit A2U Pi payment');
     }
 
     logInfo(`A2U payment submitted successfully with txid: ${txid}`);
 
-    // get order for each orderIds
+    // Mark the payment as completed in your DB
+    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+      logError("No valid order IDs provided");
+      throw new Error("No valid order IDs provided in metadata.orderIds");
+    }
+
+    // Mark the payments as completed for all orders
     for (const refId of orderIds) {
       try {
         logInfo(`Updating Order ref ${refId} with A2U payment details..`);
@@ -146,14 +128,15 @@ export const createA2UPayment = async (a2uPaymentData: A2UPaymentDataType): Prom
         } else {
           logInfo(`Order ref ${refId} successfully updated with A2U payment ID: ${paymentId}`);
         }
-      } catch  (orderErr: any) {
-        logError(`Error updating order ref ${refId}: ${orderErr.message}`);
+      } catch (err: any) {
+        logError(`Error updating order ref ${refId}: ${err.message}`);
       }
     }
 
     logInfo(`Confirming A2U payment completion on blockchain for Payment ID: ${paymentId}`);
     const completedPiPayment = await pi.completePayment(paymentId, txid);
     if (!completedPiPayment) {
+      logError(`Failed to complete A2U Pi payment with Payment ID ${ paymentId } | Txn ID: ${ txid }`);
       throw new Error(`Failed to complete A2U Pi payment transaction for Payment ID: ${paymentId}`);
     }
 

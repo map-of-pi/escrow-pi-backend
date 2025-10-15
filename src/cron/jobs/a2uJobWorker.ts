@@ -4,6 +4,7 @@ import { createA2UPayment } from "../../services/payment.service";
 
 // workers/mongodbA2UWorker.ts
 async function processNextJob(): Promise<void> {
+  logInfo("🚀 Starting next A2U payment job..");
   const now = new Date();
   const MAX_ATTEMPT = 3
 
@@ -34,24 +35,27 @@ async function processNextJob(): Promise<void> {
     }
   );
 
-
   if (!job) {
     logInfo("No pending A2U jobs found in queue.");
     return;
   }
 
-  const { receiverPiUid, senderPiUid, amount, xRef_ids, _id, attempts, memo, last_a2u_date } = job;
+  const { receiverPiUid, senderPiUid, amount, xRef_ids, _id, attempts, memo } = job;
 
   try {
     logInfo(`[→] Processing A2U payment (Attempt ${attempts}/${MAX_ATTEMPT}) for receiver ${receiverPiUid}`);
 
-    await createA2UPayment({
+    const completedpayment = await createA2UPayment({
       receiverPiUid: receiverPiUid,
       amount: amount.toString(),
-      memo: "A2U payment",
+      memo: memo,
       orderIds: xRef_ids,
       senderPiUid:senderPiUid
     })
+
+    if (!completedpayment) {
+      throw new Error('Failed to create new A2U payment');
+    }
 
     await A2UPaymentQueue.findByIdAndUpdate(_id, {
       status: 'completed',
@@ -62,7 +66,10 @@ async function processNextJob(): Promise<void> {
 
     logInfo(`[✔] A2U payment successfully completed for ${receiverPiUid}`);
   } catch (err: any) {
-    
+    const errorMsg = err.message || "Unknown error occurred";
+
+    logError(`❌ A2U payment job encountered an error: ${errorMsg}`);
+
     const willRetry = attempts < MAX_ATTEMPT;
 
     await A2UPaymentQueue.findByIdAndUpdate(_id, {

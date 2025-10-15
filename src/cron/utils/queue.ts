@@ -1,8 +1,8 @@
-import { logInfo, logError } from "../../../config/loggingConfig";
-import { Order, OrderType } from "../../../models/Order";
-import A2UPaymentQueue from "../../../models/A2UPaymentQueue";
-import User from "../../../models/User";
-import { IUser } from "../../../types";
+import { logInfo, logError } from "../../config/loggingConfig";
+import { Order, OrderType } from "../../models/Order";
+import A2UPaymentQueue from "../../models/A2UPaymentQueue";
+import User from "../../models/User";
+import { IUser } from "../../types";
 
 const GAS_FEE = 0.01;
 
@@ -61,14 +61,7 @@ export const enqueuePayment = async (
     // check if seller gas saver is on
     const receiver = await User.findById( order.receiver_id ).lean().exec() as IUser;
     const sender = await User.findById( order.sender_id ).lean().exec() as IUser;
-    const amount = order.amount;
-    
-    // // check and compute seller revenue for gas saver
-    // if (seller?.gas_saver) {
-    //   batchSellerRevenue(xRefId, seller.seller_id, amount);
-    //   return
-    // }
-    
+    const amount = order.amount;   
     const newAmount = amount - GAS_FEE;
 
     await A2UPaymentQueue.create({
@@ -84,5 +77,6 @@ export const enqueuePayment = async (
 
   } catch (err: any) {
     logError(`[✘] enqueuePayment failed for order ${orderId}: ${err.message}`);
+    throw new Error(`Error while adding A2U payment to queue ${err}`);
   }
 };

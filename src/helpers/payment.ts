@@ -5,7 +5,7 @@ import { OrderStatusEnum } from '../models/enums/orderStatusEnum';
 import { updateOrder } from '../services/order.service';
 import { getUser, validateUsername } from '../services/user.service';
 import { IUser, PaymentDTO, PaymentInfo, U2AMetadata } from '../types';
-import { enqueuePayment } from '../cron/utils/queues/queue';
+import { enqueuePayment } from '../cron/utils/queue';
 
 const logPlatformApiError = (error: any, context: string) => {
   if (error.response) {

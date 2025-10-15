@@ -1,9 +1,9 @@
 import { ClientSession } from "mongoose";
 import { addComment } from "./comment.service";
 import { logInfo, logWarn, logError } from "../config/loggingConfig";
-import { nextOrderNo } from "../helpers/getNextOrderNo";
-import { Comment, CommenType } from "../models/Comment";
-import { Order, OrderType } from "../models/Order";
+import { nextOrderNo } from "../helpers/order";
+import { Comment } from "../models/Comment";
+import { Order } from "../models/Order";
 import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
 import { IUser } from "../types";
 

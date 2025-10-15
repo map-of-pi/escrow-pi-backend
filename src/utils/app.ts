@@ -13,6 +13,7 @@ import orderRouter from "../routes/order.routes";
 import commentRouter from "../routes/comments.routes";
 import userRoutes from "../routes/user.routes";
 import notificationRoutes from "../routes/notification.routes";
+import cronRoutes from "../routes/cron.routes";
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/v1/payments', paymentsRouter);
 app.use('/api/v1/orders', orderRouter);
 app.use('/api/v1/comments', commentRouter);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/cron', cronRoutes);
 
 app.use("/", homeRoutes);
 

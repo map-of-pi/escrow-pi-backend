@@ -38,15 +38,16 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     if (
       !orderNo ||
       !status ||
-      ![
-        OrderStatusEnum.Disputed,
-        OrderStatusEnum.Declined,
-        OrderStatusEnum.Fulfilled
+      [
+        OrderStatusEnum.Requested,
+        OrderStatusEnum.Initiated,
+        OrderStatusEnum.Expired,
+        OrderStatusEnum.Paid
       ].includes(status as OrderStatusEnum)
     ) {
       logWarn(`Invalid status: (${status}) or missing orderNo from user ${authUser?.pi_uid || "unknown"}`);
       return res.status(400).json({
-        message: "Invalid status. Only disputed, declined, or fulfilled are allowed.",
+        message: "Invalid status. Only disputed, declined, released or fulfilled are allowed.",
       });
     }
 
