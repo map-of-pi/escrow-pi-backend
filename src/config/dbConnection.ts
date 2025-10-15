@@ -3,7 +3,7 @@ import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import { env } from "../utils/env";
 
 // Retry configuration
-const MAX_RETRIES = 10;
+const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 2000;
 
 // Global cached connection
