@@ -1,39 +1,46 @@
-import { createLogger, format, transports, Logger } from "winston";
+import winston from "winston";
+import { Sentry, isSentryEnabled } from "../config/sentryConnection";
+import { sendDiscordNotification } from "../utils/discord";
 
-import { env } from "../utils/env";
-import { SentryTransport } from "./sentryConnection";
-
-// define the logging configuration logic
-export const getLoggerConfig = (): { level: string; format: any; transports: any[] } => {
-  let logLevel: string = '';
-  let logFormat: any;
-  const loggerTransports: any[] = [];
-
-  if (env.NODE_ENV === 'development' || env.NODE_ENV === 'sandbox') {
-    logLevel = 'info';
-    logFormat = format.combine(format.colorize(), format.simple());
-    loggerTransports.push(new transports.Console({ format: logFormat }));
-  } else if (env.NODE_ENV === 'production' || env.NODE_ENV === 'staging') {
-    logLevel = 'error';
-    logFormat = format.combine(
-      format.errors({ stack: true }),
-      format.timestamp(),
-      format.json()
-    );
-    loggerTransports.push(new SentryTransport({ stream: process.stdout }));
-  } 
-
-  return { level: logLevel, format: logFormat, transports: loggerTransports };
-};
-
-// Create the logger using the configuration
-const loggerConfig = getLoggerConfig();
-
-// set up Winston logger accordingly
-const logger: Logger = createLogger({
-  level: loggerConfig.level,
-  format: loggerConfig.format,
-  transports: loggerConfig.transports
+// Winston logger for local logs
+const logger = winston.createLogger({
+  level: "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(
+      ({ timestamp, level, message, stack }) =>
+      `${timestamp} [${level.toUpperCase()}] ${message} ${stack || ""}`
+    )
+  ),
+  transports: [new winston.transports.Console()],
 });
 
-export default logger;
+// Wrapper functions
+const logInfo = (message: string, context?: Record<string, any>) => {
+  logger.info(message, context);
+  // sendDiscordNotification("💡 Info Logged", message, "info");
+};
+
+const logWarn = (message: string, context?: Record<string, any>) => {
+  // logger.warn(message, context);
+  if (isSentryEnabled) {
+    // Convert warning to a message with level "warning"
+    Sentry.captureMessage(message, "warning");
+  }
+  // sendDiscordNotification("⚠️ Warning Logged", message, "warning");
+};
+
+const logError = (error: Error | string, context?: Record<string, any>) => {
+  const message = typeof error === "string" ? error : error.message;
+  
+  if (isSentryEnabled) {
+    if (typeof error === "string") {
+      Sentry.captureMessage(error, "error");
+    } else {
+      Sentry.captureException(error);
+    }
+  }
+  sendDiscordNotification("❌ Error Logged", message, "error");
+};
+
+export { logInfo, logWarn, logError };

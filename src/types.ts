@@ -30,9 +30,10 @@ export interface U2AMetadata {
 }
 
 export interface A2UMetadata { 
-  orderId: string; 
-  sellerId: string; 
-  buyerId: string 
+  direction: string, 
+  receiverPiUid: string,
+  senderPiUid: string, 
+  orderIds:string[] 
 };
 
 export interface PaymentInfo {
@@ -41,6 +42,15 @@ export interface PaymentInfo {
     txid: string;
     _link: string;
   };
+};
+
+export interface A2UPaymentDataType {
+  piPaymentId?: string,
+  senderPiUid: string,
+  receiverPiUid: string,
+  amount: string,
+  orderIds: string[],
+  memo: string
 };
 
 export interface PaymentDTO {
@@ -67,8 +77,21 @@ export interface PaymentDTO {
   },
 };
 
+// ========================
+// NOTIFICATION
+// ========================
+export interface INotification extends Document {
+  _id: string;
+  pi_uid: string;
+  is_cleared: boolean;
+  reason: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export interface IA2UJob extends Document {
-  sellerPiUid: string;
+  receiverPiUid: string;
+  senderPiUid: string;
   amount: number;
   xRef_ids: string[];
   memo: string,
@@ -79,10 +102,3 @@ export interface IA2UJob extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
-
-export interface A2UPaymentDataType {
-  sellerPiUid: string,
-  amount: string,
-  xRefIds: string[],
-  memo: string
-};
