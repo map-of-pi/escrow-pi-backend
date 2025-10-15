@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import User from "../models/User";
 import { IUser } from "../types";
+import { verifyDbConnection } from "../utils/database";
 
 const findOrCreateUser = async (currentUser: IUser): Promise<IUser> => {
   try {
@@ -52,6 +53,8 @@ export const authenticate = async (
   logInfo(`Authenticating user with UID: ${currentUser.pi_uid}`);
 
   try {
+    await verifyDbConnection();
+
     const user = await findOrCreateUser(currentUser);
 
     if (!user) {
