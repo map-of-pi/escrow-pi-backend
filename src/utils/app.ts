@@ -4,6 +4,7 @@ import cors from "cors"
 import path from "path";
 import { env } from "../utils/env";
 
+import { setupExpressErrorHandler } from "@sentry/node";
 import docRouter from "../config/swagger";
 import requestLogger from "../middlewares/logger";
 import homeRoutes from "../routes/home.routes";
@@ -39,5 +40,8 @@ app.use('/api/v1/comments', commentRouter);
 app.use('/api/v1/notifications', notificationRoutes);
 
 app.use("/", homeRoutes);
+
+// Sentry Express error handler
+setupExpressErrorHandler(app);
 
 export default app;
