@@ -8,6 +8,8 @@ const OrderSchema = new Schema(
     receiver_id: { type: Schema.Types.ObjectId, required: true, index: true, ref: "User" },
     sender_username: { type: String, required: true },
     receiver_username: { type: String, required: true },
+    sender_pi_uid: { type: String, required: true },
+    receiver_pi_uid: { type: String, required: true },
     amount: { type: Number, required: true, default: 0.0 },
     order_no: { type: String, unique: true, required: true, index: true }, // public ID
     status: {

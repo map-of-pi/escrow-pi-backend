@@ -6,6 +6,7 @@ import { Comment } from "../models/Comment";
 import { Order } from "../models/Order";
 import { OrderStatusEnum } from "../models/enums/orderStatusEnum";
 import { IUser } from "../types";
+import * as notificationService from "./notification.service";
 
 function buildStatusComment(
   username: string | undefined,
@@ -62,8 +63,10 @@ export async function createOrderSecure(
       const newOrder = new Order({
         sender_id: payload.sender._id,
         sender_username: payload.sender.pi_username,
+        sender_pi_uid: payload.sender.pi_uid,
         receiver_id: payload.receiver._id,
         receiver_username: payload.receiver.pi_username,
+        receiver_pi_uid: payload.receiver.pi_uid,
         amount: payload.amount,
         order_no: orderNo
       });
@@ -84,6 +87,19 @@ export async function createOrderSecure(
 
       await session.commitTransaction();
       session.endSession();
+
+      // 🔔 Notify counterparty about new transaction (Pay or Receive)
+      try {
+        const actorPiUid = payload.authUser.pi_uid;
+        const isActorSender = actorPiUid === payload.sender.pi_uid;
+        const recipientPiUid = isActorSender ? payload.receiver.pi_uid : payload.sender.pi_uid;
+        const reason = isActorSender
+          ? `New EscrowPi payment created by ${payload.sender.pi_username} (Order ${orderNo})`
+          : `New EscrowPi request created by ${payload.receiver.pi_username} (Order ${orderNo})`;
+        await notificationService.addNotification(recipientPiUid, reason);
+      } catch (e) {
+        logWarn("Failed to create counterparty notification after order creation", { error: (e as any)?.message, order_no: orderNo });
+      }
 
       logInfo(`✅ Order successfully created`, { order_no: order.order_no });
       return order.order_no;
@@ -164,6 +180,20 @@ export const updateOrder = async (
       prevStatus: currentOrder.status,
       newStatus: nextStatus,
     });
+
+    // 🔔 Notify counterparty about status change
+    try {
+      const actorPiUid = authUser?.pi_uid;
+      const senderPiUid = currentOrder.sender_pi_uid as unknown as string;
+      const receiverPiUid = currentOrder.receiver_pi_uid as unknown as string;
+      const recipientPiUid = actorPiUid === senderPiUid ? receiverPiUid : senderPiUid;
+      const reason = `Order ${order_no} updated to ${nextStatus}`;
+      if (recipientPiUid) {
+        await notificationService.addNotification(recipientPiUid, reason);
+      }
+    } catch (e) {
+      logWarn("Failed to create counterparty notification after status update", { error: (e as any)?.message, order_no });
+    }
 
     // 7️⃣ Return combined result
     return { order: updatedOrder.toObject(), comment: newComment };
