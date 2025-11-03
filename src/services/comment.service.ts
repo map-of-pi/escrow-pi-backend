@@ -33,7 +33,8 @@ export const addComment = async (
       const isSenderAuthor = author === order.sender_username;
       const recipientPiUid = isSenderAuthor ? (order as any).receiver_pi_uid : (order as any).sender_pi_uid;
       if (recipientPiUid) {
-        await notificationService.addNotification(recipientPiUid, `New comment on order ${order_no}`);
+        const actorLabel = author && author.trim().length ? author : 'System';
+        await notificationService.addNotification(recipientPiUid, `${order_no}: New comment added for order by ${actorLabel}`);
       }
     } catch (e) {
       logWarn(`Failed to create counterparty notification after comment on #${order_no}`, { error: (e as any)?.message });

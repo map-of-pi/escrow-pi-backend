@@ -94,8 +94,8 @@ export async function createOrderSecure(
         const isActorSender = actorPiUid === payload.sender.pi_uid;
         const recipientPiUid = isActorSender ? payload.receiver.pi_uid : payload.sender.pi_uid;
         const reason = isActorSender
-          ? `New EscrowPi payment created by ${payload.sender.pi_username} (Order ${orderNo})`
-          : `New EscrowPi request created by ${payload.receiver.pi_username} (Order ${orderNo})`;
+          ? `Order ${orderNo}: New EscrowPi payment created by ${payload.sender.pi_username}`
+          : `Order ${orderNo}: New EscrowPi request created by ${payload.receiver.pi_username}`;
         await notificationService.addNotification(recipientPiUid, reason);
       } catch (e) {
         logWarn("Failed to create counterparty notification after order creation", { error: (e as any)?.message, order_no: orderNo });
@@ -181,18 +181,21 @@ export const updateOrder = async (
       newStatus: nextStatus,
     });
 
-    // 🔔 Notify counterparty about status change
-    try {
-      const actorPiUid = authUser?.pi_uid;
-      const senderPiUid = currentOrder.sender_pi_uid as unknown as string;
-      const receiverPiUid = currentOrder.receiver_pi_uid as unknown as string;
-      const recipientPiUid = actorPiUid === senderPiUid ? receiverPiUid : senderPiUid;
-      const reason = `Order ${order_no} updated to ${nextStatus}`;
-      if (recipientPiUid) {
-        await notificationService.addNotification(recipientPiUid, reason);
+    // 🔔 Notify counterparty about status change (skip for Initiated)
+    if (nextStatus !== OrderStatusEnum.Initiated) {
+      try {
+        const actorPiUid = authUser?.pi_uid;
+        const senderPiUid = currentOrder.sender_pi_uid as unknown as string;
+        const receiverPiUid = currentOrder.receiver_pi_uid as unknown as string;
+        const recipientPiUid = actorPiUid === senderPiUid ? receiverPiUid : senderPiUid;
+        const actorLabel = authUser?.pi_username ? authUser.pi_username : 'System';
+        const reason = `Order ${order_no} status changed to ${nextStatus} by ${actorLabel}`;
+        if (recipientPiUid) {
+          await notificationService.addNotification(recipientPiUid, reason);
+        }
+      } catch (e) {
+        logWarn("Failed to create counterparty notification after status update", { error: (e as any)?.message, order_no });
       }
-    } catch (e) {
-      logWarn("Failed to create counterparty notification after status update", { error: (e as any)?.message, order_no });
     }
 
     // 7️⃣ Return combined result
