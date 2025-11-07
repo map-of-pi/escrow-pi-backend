@@ -211,13 +211,12 @@ export const updateOrder = async (
   }
 };
 
-
-export const getUserOrders = async (authUser:IUser) => {
+export const getUserOrders = async (authUser: IUser) => {
   try {
     logInfo("Fetching user orders", { user: authUser.pi_username });
 
     const updatedOrder = await Order.find({
-      $or: [{ sender_id: authUser._id }, { receiver_id: authUser._id }]
+      $or: [{ sender_id: authUser._id }, { receiver_id: authUser._id }],
     })
       .select("-sender_id -receiver_id -u2a_payment_id -a2u_payment_id -_id")
       .sort({ updatedAt: -1 })
@@ -226,20 +225,19 @@ export const getUserOrders = async (authUser:IUser) => {
     return updatedOrder;
   } catch (err: any) {
     logError("❌ Service error getting user orders", { error: err.message });
-    throw new Error('Service error getting user orders')
+    throw new Error("Service error getting user orders");
   }
 };
 
 export const getUserSingleOrder = async (order_no: string) => {
   try {
     logInfo("Fetching order details", { order_no });
-    // 🔹 Find the order by order_no
     const order = await Order.findOne({ order_no })
       .select("-sender_id -receiver_id -u2a_payment_id -a2u_payment_id -_id")
       .lean();
 
     if (!order) {
-      logError(`Order with order_no #${ order_no } is not found`);
+      logError(`Order with order_no #${order_no} is not found`);
       throw new Error("Order not found");
     }
 
@@ -249,10 +247,174 @@ export const getUserSingleOrder = async (order_no: string) => {
       .sort({ createdAt: 1 }) // oldest to newest
       .lean();
 
-    // 🔹 Attach comments to the order object
-    return { order: {...order}, comments };
+    return { order: { ...order }, comments };
   } catch (err: any) {
     logError("❌ Service error getting user single order", { error: err.message });
     throw new Error("Service error getting user single order");
+  }
+};
+
+// ===== Dispute services =====
+
+const assertParticipant = (order: any, user: IUser) => {
+  const isSender = String(order.sender_id) === String(user._id) || order.sender_username === user.pi_username;
+  const isReceiver = String(order.receiver_id) === String(user._id) || order.receiver_username === user.pi_username;
+  if (!isSender && !isReceiver) {
+    throw new Error("Not authorized to modify this order");
+  }
+  return { isSender, isReceiver };
+};
+
+export const proposeDispute = async (
+  order_no: string,
+  payload: { percent?: number; amount?: number; note?: string },
+  authUser: IUser
+) => {
+  try {
+    const order = await Order.findOne({ order_no });
+    if (!order) throw new Error("Order not found");
+    assertParticipant(order, authUser);
+
+    if (!payload || (payload.percent == null && payload.amount == null)) {
+      throw new Error("Provide percent or amount for dispute proposal");
+    }
+    if (payload.percent != null && (payload.percent < 0 || payload.percent > 100)) {
+      throw new Error("Percent out of range");
+    }
+
+    if (order.dispute?.status === 'proposed') {
+      // idempotent: if same proposer and same values, return current
+      if (
+        order.dispute.proposed_by === authUser.pi_username &&
+        (payload.percent == null || order.dispute.proposal_percent === payload.percent) &&
+        (payload.amount == null || order.dispute.proposal_amount === payload.amount)
+      ) {
+        return { order: order.toObject() };
+      }
+    }
+
+    order.dispute = {
+      ...(order.dispute || {}),
+      is_disputed: true,
+      status: 'proposed',
+      proposal_percent: payload.percent ?? order.dispute?.proposal_percent,
+      proposal_amount: payload.amount ?? order.dispute?.proposal_amount,
+      proposed_by: authUser.pi_username,
+      proposed_at: new Date(),
+      history: [
+        ...((order.dispute && order.dispute.history) || []),
+        { action: 'proposed', by: authUser.pi_username, at: new Date(), percent: payload.percent, amount: payload.amount, note: payload.note }
+      ]
+    } as any;
+
+    await order.save();
+
+    // optional: add comment
+    try {
+      await addComment(order_no, `Dispute proposed (${payload.percent ?? 'n/a'}%${payload.amount != null ? `, ${payload.amount} pi` : ''})`, authUser.pi_username);
+    } catch {}
+
+    // notify counterparty
+    try {
+      const recipientPiUid = authUser.pi_uid === order.sender_pi_uid ? order.receiver_pi_uid : order.sender_pi_uid;
+      const percentTxt = payload.percent != null ? `${payload.percent}%` : undefined;
+      const amountTxt = payload.amount != null ? `${payload.amount} pi` : undefined;
+      const what = [percentTxt, amountTxt].filter(Boolean).join(" / ") || "proposal";
+      await notificationService.addNotification(recipientPiUid, `Order ${order_no}: Dispute proposed (${what}) by ${authUser.pi_username}`);
+    } catch (e) {
+      logWarn("Failed to create notification for dispute proposal", { error: (e as any)?.message, order_no });
+    }
+
+    return { order: order.toObject() };
+  } catch (err: any) {
+    logError("❌ Error proposing dispute", { order_no, error: err.message });
+    throw err;
+  }
+};
+
+export const acceptDispute = async (
+  order_no: string,
+  payload: { note?: string },
+  authUser: IUser
+) => {
+  try {
+    const order = await Order.findOne({ order_no });
+    if (!order) throw new Error("Order not found");
+    assertParticipant(order, authUser);
+
+    if (!order.dispute || order.dispute.status !== 'proposed') {
+      throw new Error("No active dispute proposal to accept");
+    }
+    if (order.dispute.proposed_by === authUser.pi_username) {
+      throw new Error("Proposer cannot accept their own proposal");
+    }
+
+    order.dispute.status = 'accepted';
+    (order.dispute as any).accepted_by = authUser.pi_username;
+    (order.dispute as any).accepted_at = new Date();
+    order.dispute.history = [
+      ...order.dispute.history,
+      { action: 'accepted', by: authUser.pi_username, at: new Date(), note: payload.note }
+    ] as any;
+
+    await order.save();
+
+    try { await addComment(order_no, `Dispute proposal accepted`, authUser.pi_username); } catch {}
+
+    try {
+      const recipientPiUid = authUser.pi_uid === order.sender_pi_uid ? order.receiver_pi_uid : order.sender_pi_uid;
+      await notificationService.addNotification(recipientPiUid, `Order ${order_no}: Dispute proposal accepted by ${authUser.pi_username}`);
+    } catch (e) {
+      logWarn("Failed to create notification for dispute acceptance", { error: (e as any)?.message, order_no });
+    }
+
+    return { order: order.toObject() };
+  } catch (err: any) {
+    logError("❌ Error accepting dispute", { order_no, error: err.message });
+    throw err;
+  }
+};
+
+export const declineDispute = async (
+  order_no: string,
+  payload: { note?: string },
+  authUser: IUser
+) => {
+  try {
+    const order = await Order.findOne({ order_no });
+    if (!order) throw new Error("Order not found");
+    assertParticipant(order, authUser);
+
+    if (!order.dispute || order.dispute.status !== 'proposed') {
+      throw new Error("No active dispute proposal to decline");
+    }
+    if (order.dispute.proposed_by === authUser.pi_username) {
+      throw new Error("Proposer cannot decline their own proposal");
+    }
+
+    order.dispute.status = 'declined';
+    (order.dispute as any).declined_by = authUser.pi_username;
+    (order.dispute as any).declined_at = new Date();
+    order.dispute.history = [
+      ...order.dispute.history,
+      { action: 'declined', by: authUser.pi_username, at: new Date(), note: payload.note }
+    ] as any;
+
+    await order.save();
+
+    try { await addComment(order_no, `Dispute proposal declined`, authUser.pi_username); } catch {}
+
+    try {
+      const recipientPiUid = authUser.pi_uid === order.sender_pi_uid ? order.receiver_pi_uid : order.sender_pi_uid;
+      await notificationService.addNotification(recipientPiUid, `Order ${order_no}: Dispute proposal declined by ${authUser.pi_username}`);
+    } catch (e) {
+      logWarn("Failed to create notification for dispute decline", { error: (e as any)?.message, order_no });
+    }
+
+
+    return { order: order.toObject() };
+  } catch (err: any) {
+    logError("❌ Error declining dispute", { order_no, error: err.message });
+    throw err;
   }
 };

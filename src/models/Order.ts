@@ -37,6 +37,35 @@ const OrderSchema = new Schema(
       type: Date,
       required: false,
     },
+    dispute: {
+      is_disputed: { type: Boolean, default: false },
+      status: {
+        type: String,
+        enum: ['none', 'proposed', 'accepted', 'declined', 'cancelled'],
+        default: 'none'
+      },
+      proposal_percent: { type: Number, required: false },
+      proposal_amount: { type: Number, required: false },
+      proposed_by: { type: String, required: false }, // pi_username
+      proposed_at: { type: Date, required: false },
+      accepted_by: { type: String, required: false },
+      accepted_at: { type: Date, required: false },
+      declined_by: { type: String, required: false },
+      declined_at: { type: Date, required: false },
+      history: [
+        new Schema(
+          {
+            action: { type: String, enum: ['proposed', 'accepted', 'declined', 'cancelled'], required: true },
+            by: { type: String, required: true }, // pi_username
+            at: { type: Date, default: Date.now },
+            percent: { type: Number, required: false },
+            amount: { type: Number, required: false },
+            note: { type: String, required: false },
+          },
+          { _id: false }
+        )
+      ],
+    },
   },
   { timestamps: true }
 );
