@@ -309,18 +309,20 @@ export const proposeDispute = async (
 
     await order.save();
 
-    // optional: add comment
-    try {
-      await addComment(order_no, `Dispute proposed (${payload.percent ?? 'n/a'}%${payload.amount != null ? `, ${payload.amount} pi` : ''})`, authUser.pi_username);
-    } catch {}
+    const proposedPct = (payload.percent ?? order.dispute?.proposal_percent);
+    const proposedPctText = (typeof proposedPct === 'number') ? `${proposedPct}%` : 'n/a%';
 
-    // notify counterparty
+    // Add comment
+    try {
+      await addComment(order_no, `Dispute proposal (${proposedPctText}) sent by ${authUser.pi_username}`, authUser.pi_username);
+    } catch (e) {
+      logWarn("Failed to add 'proposal sent' comment", { order_no, error: (e as any)?.message });
+    }
+
+    // Notify counterparty
     try {
       const recipientPiUid = authUser.pi_uid === order.sender_pi_uid ? order.receiver_pi_uid : order.sender_pi_uid;
-      const percentTxt = payload.percent != null ? `${payload.percent}%` : undefined;
-      const amountTxt = payload.amount != null ? `${payload.amount} pi` : undefined;
-      const what = [percentTxt, amountTxt].filter(Boolean).join(" / ") || "proposal";
-      await notificationService.addNotification(recipientPiUid, `Order ${order_no}: Dispute proposed (${what}) by ${authUser.pi_username}`);
+      await notificationService.addNotification(recipientPiUid, `Order ${order_no}: Dispute proposal (${proposedPctText}) sent by ${authUser.pi_username}`);
     } catch (e) {
       logWarn("Failed to create notification for dispute proposal", { error: (e as any)?.message, order_no });
     }
@@ -357,15 +359,43 @@ export const acceptDispute = async (
       { action: 'accepted', by: authUser.pi_username, at: new Date(), note: payload.note }
     ] as any;
 
+    // ✅ Mark the transaction as released when dispute is accepted
+    order.status = OrderStatusEnum.Released;
+
     await order.save();
 
-    try { await addComment(order_no, `Dispute proposal accepted`, authUser.pi_username); } catch {}
+    const acceptedPct = order.dispute?.proposal_percent;
+    const acceptedPctText = (typeof acceptedPct === 'number') ? `${acceptedPct}%` : 'n/a%';
 
+    // Add acceptance comment (requested phrasing)
+    try {
+      await addComment(order_no, `Dispute proposal (${acceptedPctText}) accepted by ${authUser.pi_username}`, authUser.pi_username);
+    } catch (e) {
+      logWarn("Failed to add 'proposal accepted' comment", { order_no, error: (e as any)?.message });
+    }
+
+    // Add status change comment (Released)
+    try {
+      const statusComment = buildStatusComment(authUser?.pi_username, OrderStatusEnum.Released);
+      await addComment(order_no, statusComment, authUser.pi_username);
+    } catch (e) {
+      logWarn("Failed to add 'Released' status change comment after dispute acceptance", { order_no, error: (e as any)?.message });
+    }
+
+    // Notify counterparty about dispute acceptance
     try {
       const recipientPiUid = authUser.pi_uid === order.sender_pi_uid ? order.receiver_pi_uid : order.sender_pi_uid;
-      await notificationService.addNotification(recipientPiUid, `Order ${order_no}: Dispute proposal accepted by ${authUser.pi_username}`);
+      await notificationService.addNotification(recipientPiUid, `Dispute proposal (${acceptedPctText}) accepted by ${authUser.pi_username}`);
     } catch (e) {
       logWarn("Failed to create notification for dispute acceptance", { error: (e as any)?.message, order_no });
+    }
+
+    // Notify about status update to Released
+    try {
+      const recipientPiUid = authUser.pi_uid === order.sender_pi_uid ? order.receiver_pi_uid : order.sender_pi_uid;
+      await notificationService.addNotification(recipientPiUid, `Order ${order_no} status changed to Released`);
+    } catch (e) {
+      logWarn("Failed to create notification for status change to Released after dispute acceptance", { error: (e as any)?.message, order_no });
     }
 
     return { order: order.toObject() };
