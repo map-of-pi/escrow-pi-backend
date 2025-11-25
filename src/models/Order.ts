@@ -8,6 +8,8 @@ const OrderSchema = new Schema(
     receiver_id: { type: Schema.Types.ObjectId, required: true, index: true, ref: "User" },
     sender_username: { type: String, required: true },
     receiver_username: { type: String, required: true },
+    sender_pi_uid: { type: String, required: true },
+    receiver_pi_uid: { type: String, required: true },
     amount: { type: Number, required: true, default: 0.0 },
     order_no: { type: String, unique: true, required: true, index: true }, // public ID
     status: {
@@ -34,6 +36,35 @@ const OrderSchema = new Schema(
     a2u_completed_at: {
       type: Date,
       required: false,
+    },
+    dispute: {
+      is_disputed: { type: Boolean, default: false },
+      status: {
+        type: String,
+        enum: ['none', 'proposed', 'accepted', 'declined', 'cancelled'],
+        default: 'none'
+      },
+      proposal_percent: { type: Number, required: false },
+      proposal_amount: { type: Number, required: false },
+      proposed_by: { type: String, required: false }, // pi_username
+      proposed_at: { type: Date, required: false },
+      accepted_by: { type: String, required: false },
+      accepted_at: { type: Date, required: false },
+      declined_by: { type: String, required: false },
+      declined_at: { type: Date, required: false },
+      history: [
+        new Schema(
+          {
+            action: { type: String, enum: ['proposed', 'accepted', 'declined', 'cancelled'], required: true },
+            by: { type: String, required: true }, // pi_username
+            at: { type: Date, default: Date.now },
+            percent: { type: Number, required: false },
+            amount: { type: Number, required: false },
+            note: { type: String, required: false },
+          },
+          { _id: false }
+        )
+      ],
     },
   },
   { timestamps: true }
