@@ -2,6 +2,7 @@ import { ClientSession } from "mongoose";
 import { logInfo, logWarn, logError } from "../config/loggingConfig";
 import { Comment } from "../models/Comment";
 import { Order } from "../models/Order";
+import * as notificationService from "./notification.service";
 
 export const addComment = async (
   order_no: string, 
@@ -25,6 +26,20 @@ export const addComment = async (
 
     const comment = await newComment.save({ session });
     logInfo(`New comment added by ${author} to order #${order_no}`);
+
+    // 🔔 Notify counterparty about new comment
+    try {
+      // Determine recipient based on who authored the comment
+      const isSenderAuthor = author === order.sender_username;
+      const recipientPiUid = isSenderAuthor ? (order as any).receiver_pi_uid : (order as any).sender_pi_uid;
+      if (recipientPiUid) {
+        const actorLabel = author && author.trim().length ? author : 'System';
+        await notificationService.addNotification(recipientPiUid, `${order_no}: New comment added for order by ${actorLabel}`);
+      }
+    } catch (e) {
+      logWarn(`Failed to create counterparty notification after comment on #${order_no}`, { error: (e as any)?.message });
+    }
+
     return comment;
   } catch (err: any) {
     logError(`Failed to add comment to order #${order_no}`, err);

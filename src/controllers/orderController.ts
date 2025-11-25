@@ -5,7 +5,10 @@ import {
   createOrderSecure, 
   getUserOrders, 
   getUserSingleOrder, 
-  updateOrder 
+  updateOrder,
+  proposeDispute as svcProposeDispute,
+  acceptDispute as svcAcceptDispute,
+  declineDispute as svcDeclineDispute
 } from "../services/order.service";
 import { IUser } from "../types";
 
@@ -26,6 +29,63 @@ export const createOrder = async (req: Request, res: Response) => {
   } catch (err: any) {
     logError(`Error creating order: ${err.message}`);
     return res.status(500).json({ message: 'An error occurred while creating order; please try again later' });
+  }
+};
+
+export const proposeDispute = async (req: Request, res: Response) => {
+  try {
+    const { orderNo } = req.params;
+    const authUser = req.currentUser as IUser;
+    const { percent, amount, note } = req.body || {};
+
+    if (!orderNo) {
+      logWarn("Missing order number in dispute proposal.");
+      return res.status(400).json({ message: "order number can not be empty" });
+    }
+
+    const result = await svcProposeDispute(orderNo, { percent, amount, note }, authUser);
+    return res.status(200).json(result.order);
+  } catch (err: any) {
+    logError(`Error proposing dispute for order #${req.params.orderNo}: ${err.message}`);
+    return res.status(400).json({ message: err.message || 'Failed to propose dispute' });
+  }
+};
+
+export const acceptDispute = async (req: Request, res: Response) => {
+  try {
+    const { orderNo } = req.params;
+    const authUser = req.currentUser as IUser;
+    const { note } = req.body || {};
+
+    if (!orderNo) {
+      logWarn("Missing order number in dispute acceptance.");
+      return res.status(400).json({ message: "order number can not be empty" });
+    }
+
+    const result = await svcAcceptDispute(orderNo, { note }, authUser);
+    return res.status(200).json(result.order);
+  } catch (err: any) {
+    logError(`Error accepting dispute for order #${req.params.orderNo}: ${err.message}`);
+    return res.status(400).json({ message: err.message || 'Failed to accept dispute' });
+  }
+};
+
+export const declineDispute = async (req: Request, res: Response) => {
+  try {
+    const { orderNo } = req.params;
+    const authUser = req.currentUser as IUser;
+    const { note } = req.body || {};
+
+    if (!orderNo) {
+      logWarn("Missing order number in dispute decline.");
+      return res.status(400).json({ message: "order number can not be empty" });
+    }
+
+    const result = await svcDeclineDispute(orderNo, { note }, authUser);
+    return res.status(200).json(result.order);
+  } catch (err: any) {
+    logError(`Error declining dispute for order #${req.params.orderNo}: ${err.message}`);
+    return res.status(400).json({ message: err.message || 'Failed to decline dispute' });
   }
 };
 
