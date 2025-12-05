@@ -14,3 +14,7 @@
 # local misc
 uploads
 /scripts
+
+# OS specific files
+.DS_Store
+Thumbs.db
